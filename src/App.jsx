@@ -330,13 +330,11 @@ function buildDrying(d, works) {
 // ── AI TEXT CLEANER ───────────────────────────────────────────────────────────
 async function aiClean(text, mode = "inline") {
   if (!text || !text.trim()) return text;
+  const context = "You are an expert scope of work writer for a professional property remediation and restoration company in Australia (Major Industries Restoration). You are highly familiar with industry terminology and standards: HEPA vacuuming, containment setup, negative air pressure, air scrubbers (AFDs), dehumidifiers, air movers, sanitation, encapsulation, strip out, moisture readings, drying equipment, antimicrobial treatment, odour control, fogging, clearance certificates, etc. The input may be in any language (French, English, etc.) — always output in English. Do not add information that was not mentioned by the technician.";
   const prompts = {
-    // bullet point list for Works Required
-    bullets: "You are a professional scope of work writer for a remediation company in Australia. Convert the following technician notes into clean, professional bullet points. Output ONLY the bullet points, one per line, plain text, no dashes or asterisks. Fix any spelling or transcription errors. Do not add information not mentioned. Keep it concise and professional.\n\nNotes:\n" + text,
-    // short inline field — just clean up spelling/grammar, keep it short
-    inline: "You are a professional document writer for a remediation company in Australia. Clean up the following text: fix spelling mistakes, transcription errors, and grammar. Keep the meaning exactly the same. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
-    // trades field — clean up and keep professional
-    trades: "You are a professional document writer for a remediation company in Australia. Clean up the following trade requirement notes: fix spelling, transcription errors, grammar. Keep the meaning exactly the same. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
+    bullets: context + "\n\nConvert the following technician notes into clean, professional bullet points suitable for a Scope of Work document. Use correct industry terminology. Output ONLY the bullet points, one per line, plain text, no dashes or asterisks. Fix spelling or transcription errors.\n\nNotes:\n" + text,
+    inline:  context + "\n\nClean up the following field text: fix spelling, transcription errors, grammar, and translate to English if needed. Use correct industry terminology where appropriate. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
+    trades:  context + "\n\nClean up the following trade requirement notes: fix spelling, transcription errors, grammar, and translate to English if needed. Keep professional and concise. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
   };
   try {
     const res = await fetch("/api/generate", {
