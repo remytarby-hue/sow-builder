@@ -327,9 +327,17 @@ function buildDrying(d, works) {
   ].join("\n");
 }
 
-// ── AI WORKS POLISH ───────────────────────────────────────────────────────────
-async function polishWorks(rawText, sowType) {
-  const prompt = "You are a professional scope of work writer for a remediation company in Australia. Convert the following technician notes into clean, professional bullet points suitable for a Scope of Work document. Output ONLY the bullet points, one per line, no dashes or asterisks — plain text lines only. Do not add information that wasn't mentioned. Keep it concise and professional.\n\nTechnician notes:\n" + rawText;
+// ── AI TEXT CLEANER ───────────────────────────────────────────────────────────
+async function aiClean(text, mode = "inline") {
+  if (!text || !text.trim()) return text;
+  const prompts = {
+    // bullet point list for Works Required
+    bullets: "You are a professional scope of work writer for a remediation company in Australia. Convert the following technician notes into clean, professional bullet points. Output ONLY the bullet points, one per line, plain text, no dashes or asterisks. Fix any spelling or transcription errors. Do not add information not mentioned. Keep it concise and professional.\n\nNotes:\n" + text,
+    // short inline field — just clean up spelling/grammar, keep it short
+    inline: "You are a professional document writer for a remediation company in Australia. Clean up the following text: fix spelling mistakes, transcription errors, and grammar. Keep the meaning exactly the same. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
+    // trades field — clean up and keep professional
+    trades: "You are a professional document writer for a remediation company in Australia. Clean up the following trade requirement notes: fix spelling, transcription errors, grammar. Keep the meaning exactly the same. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
+  };
   try {
     const res = await fetch("/api/generate", {
       method: "POST",
@@ -337,14 +345,21 @@ async function polishWorks(rawText, sowType) {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 400,
-        messages: [{ role: "user", content: prompt }],
+        messages: [{ role: "user", content: prompts[mode] || prompts.inline }],
       }),
     });
     const data = await res.json();
-    return data.content?.map(b => b.text || "").join("").trim() || rawText;
+    return data.content?.map(b => b.text || "").join("").trim() || text;
   } catch {
-    return rawText;
+    return text;
   }
+}
+
+// Clean multiple fields in parallel
+async function cleanAll(fields) {
+  const entries = Object.entries(fields);
+  const results = await Promise.all(entries.map(([, { text, mode }]) => aiClean(text, mode)));
+  return Object.fromEntries(entries.map(([key], i) => [key, results[i]]));
 }
 
 
@@ -483,9 +498,14 @@ function MouldForm({ onResult }) {
   const CONS_STD=["Antimicrobial solution","Plastic sheeting","PPE","Filters / bags","Microfibre cloths","Containment doors","Multi-tool blades","Cloth tape / masking tape","Rags"];
   const go = async () => {
     setLoading(true);
-    const raw = works || WORKS_TEMPLATES.mould;
-    const polished = works ? await polishWorks(works, "mould") : WORKS_TEMPLATES.mould;
-    onResult(buildMould({areas,otherTrades,tradesDetail,techs,hours,equip,specCons,consDetail,addReqs}, polished));
+    const cleaned = await cleanAll({
+      areas:        { text: areas,        mode: "inline"  },
+      tradesDetail: { text: tradesDetail, mode: "trades"  },
+      works:        { text: works || WORKS_TEMPLATES.mould, mode: "bullets" },
+      consDetail:   { text: consDetail,   mode: "inline"  },
+      addReqs:      { text: addReqs,      mode: "inline"  },
+    });
+    onResult(buildMould({areas:cleaned.areas,otherTrades,tradesDetail:cleaned.tradesDetail,techs,hours,equip,specCons,consDetail:cleaned.consDetail,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
   };
   return (<div>
@@ -529,8 +549,13 @@ function ContentsForm({ onResult }) {
   const PHASE_DEF=[{key:"initial",label:"Initial attendance — assessment & inventory"},{key:"remediation",label:"Remediation of restorable items"},{key:"reinstate",label:"Reinstatement of contents"},{key:"final",label:"Final checks & confirmation"}];
   const go = async () => {
     setLoading(true);
-    const polished = works ? await polishWorks(works, "contents") : WORKS_TEMPLATES.contents;
-    onResult(buildContents({areas,phases,equip,truckDays,storageSize,addReqs}, polished));
+    const cleaned = await cleanAll({
+      areas:       { text: areas,       mode: "inline"  },
+      works:       { text: works || WORKS_TEMPLATES.contents, mode: "bullets" },
+      storageSize: { text: storageSize, mode: "inline"  },
+      addReqs:     { text: addReqs,     mode: "inline"  },
+    });
+    onResult(buildContents({areas:cleaned.areas,phases,equip,truckDays,storageSize:cleaned.storageSize,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
   };
   return (<div>
@@ -568,8 +593,17 @@ function StripOutForm({ onResult }) {
   const DEFS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"poles",label:"Containment Poles"}];
   const go = async () => {
     setLoading(true);
-    const polished = works ? await polishWorks(works, "stripout") : WORKS_TEMPLATES.stripout;
-    onResult(buildStripout({areas,elec,plumb,builder,other,asbestos,skipBin,skipDetail,techs,hours,equip,addReqs}, polished));
+    const cleaned = await cleanAll({
+      areas:      { text: areas,      mode: "inline"  },
+      elec:       { text: elec,       mode: "trades"  },
+      plumb:      { text: plumb,      mode: "trades"  },
+      builder:    { text: builder,    mode: "trades"  },
+      other:      { text: other,      mode: "trades"  },
+      skipDetail: { text: skipDetail, mode: "inline"  },
+      works:      { text: works || WORKS_TEMPLATES.stripout, mode: "bullets" },
+      addReqs:    { text: addReqs,    mode: "inline"  },
+    });
+    onResult(buildStripout({areas:cleaned.areas,elec:cleaned.elec,plumb:cleaned.plumb,builder:cleaned.builder,other:cleaned.other,asbestos,skipBin,skipDetail:cleaned.skipDetail,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
   };
   return (<div>
@@ -608,8 +642,12 @@ function FlooringForm({ onResult }) {
   const DEFS=[{key:"dehum",label:"Dehumidifier"},{key:"mover",label:"Air Mover / Fan"},{key:"hepa",label:"HEPA Vacuum"}];
   const go = async () => {
     setLoading(true);
-    const polished = works ? await polishWorks(works, "flooring") : WORKS_TEMPLATES.flooring;
-    onResult(buildFlooring({areas,vacate,techs,hours,equip,truck,highCost,addReqs}, polished));
+    const cleaned = await cleanAll({
+      areas:   { text: areas,   mode: "inline"  },
+      works:   { text: works || WORKS_TEMPLATES.flooring, mode: "bullets" },
+      addReqs: { text: addReqs, mode: "inline"  },
+    });
+    onResult(buildFlooring({areas:cleaned.areas,vacate,techs,hours,equip,truck,highCost,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
   };
   return (<div>
@@ -648,11 +686,19 @@ function FloodForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
-    const pw1 = w1 ? await polishWorks(w1) : WORKS_TEMPLATES.flood_contents;
-    const pw2 = w2 ? await polishWorks(w2) : WORKS_TEMPLATES.flood_stripout;
-    const pw3 = w3 ? await polishWorks(w3) : WORKS_TEMPLATES.flood_siteprep;
-    const pw4 = w4 ? await polishWorks(w4) : WORKS_TEMPLATES.flood_restoration;
-    onResult(buildFlood({areas,elec,plumb,builder,techs1,hours1,equip1,techs2,hours2,equip2,techs3,hours3,equip3,techs4,hours4,equip4,storageSize,addReqs}, {w1:pw1,w2:pw2,w3:pw3,w4:pw4}));
+    const cleaned = await cleanAll({
+      areas:       { text: areas,       mode: "inline"  },
+      elec:        { text: elec,        mode: "trades"  },
+      plumb:       { text: plumb,       mode: "trades"  },
+      builder:     { text: builder,     mode: "trades"  },
+      w1:          { text: w1 || WORKS_TEMPLATES.flood_contents,   mode: "bullets" },
+      w2:          { text: w2 || WORKS_TEMPLATES.flood_stripout,   mode: "bullets" },
+      w3:          { text: w3 || WORKS_TEMPLATES.flood_siteprep,   mode: "bullets" },
+      w4:          { text: w4 || WORKS_TEMPLATES.flood_restoration,mode: "bullets" },
+      storageSize: { text: storageSize, mode: "inline"  },
+      addReqs:     { text: addReqs,     mode: "inline"  },
+    });
+    onResult(buildFlood({areas:cleaned.areas,elec:cleaned.elec,plumb:cleaned.plumb,builder:cleaned.builder,techs1,hours1,equip1,techs2,hours2,equip2,techs3,hours3,equip3,techs4,hours4,equip4,storageSize:cleaned.storageSize,addReqs:cleaned.addReqs}, {w1:cleaned.w1,w2:cleaned.w2,w3:cleaned.w3,w4:cleaned.w4}));
     setLoading(false);
   };
 
@@ -701,8 +747,12 @@ function RestorationForm({ onResult }) {
   const DEFS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"},{key:"fogging",label:"Fogging Machine"}];
   const go = async () => {
     setLoading(true);
-    const polished = works ? await polishWorks(works, "restoration") : WORKS_TEMPLATES.restoration;
-    onResult(buildRestoration({areas,techs,hours,equip,addReqs}, polished));
+    const cleaned = await cleanAll({
+      areas:   { text: areas,   mode: "inline"  },
+      works:   { text: works || WORKS_TEMPLATES.restoration, mode: "bullets" },
+      addReqs: { text: addReqs, mode: "inline"  },
+    });
+    onResult(buildRestoration({areas:cleaned.areas,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
   };
   return (<div>
@@ -729,8 +779,12 @@ function DryingForm({ onResult }) {
   const DEFS=[{key:"dehum",label:"Dehumidifier"},{key:"mover",label:"Air Mover / Fan"}];
   const go = async () => {
     setLoading(true);
-    const polished = works ? await polishWorks(works, "drying") : WORKS_TEMPLATES.drying;
-    onResult(buildDrying({areas,techs,hours,equip,addReqs}, polished));
+    const cleaned = await cleanAll({
+      areas:   { text: areas,   mode: "inline"  },
+      works:   { text: works || WORKS_TEMPLATES.drying, mode: "bullets" },
+      addReqs: { text: addReqs, mode: "inline"  },
+    });
+    onResult(buildDrying({areas:cleaned.areas,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
   };
   return (<div>
