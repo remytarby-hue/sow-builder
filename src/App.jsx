@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 
 // ── COLOURS — Major Industries ────────────────────────────────────────────────
 const C = {
@@ -112,7 +112,7 @@ function buildContents(d, works) {
     "",
     "Labour Breakdown",
     "General summary of labour carried out onsite.",
-    phases.map(p => "\t• " + p.label + " - " + d.phases[p.key].techs + " tech" + (d.phases[p.key].techs > 1 ? "s" : "") + " x " + d.phases[p.key].hours + " hours").join("\n"),
+    phases.filter(p => d.phases[p.key].techs > 0 && d.phases[p.key].hours > 0).map(p => "\t• " + p.label + " - " + d.phases[p.key].techs + " tech" + (d.phases[p.key].techs > 1 ? "s" : "") + " x " + d.phases[p.key].hours + " hours").join("\n"),
     "",
     "Equipment Breakdown",
     equipBlock([{key:"scrubber",label:"Air Scrubbers"},{key:"hepa",label:"HEPA Vacuumed"}], d.equip),
@@ -347,49 +347,20 @@ async function polishWorks(rawText, sowType) {
   }
 }
 
-// ── SPEECH ────────────────────────────────────────────────────────────────────
-function useSpeech(onResult) {
-  const recRef = useRef(null);
-  const [listening, setListening] = useState(false);
-  const [supported, setSupported] = useState(false);
-  useEffect(() => { if (window.SpeechRecognition || window.webkitSpeechRecognition) setSupported(true); }, []);
-  const start = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-    const rec = new SR();
-    rec.lang = "en-AU"; rec.interimResults = false;
-    rec.onresult = e => onResult(e.results[0][0].transcript);
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    rec.start(); recRef.current = rec; setListening(true);
-  };
-  const stop = () => { recRef.current?.stop(); setListening(false); };
-  return { listening, supported, start, stop };
-}
+
 
 // ── UI COMPONENTS ─────────────────────────────────────────────────────────────
-function VoiceField({ value, onChange, placeholder, rows = 3, templateKey }) {
-  const append = t => onChange((value ? value + " " : "") + t);
-  const { listening, supported, start, stop } = useSpeech(append);
+function TextField({ value, onChange, placeholder, rows = 3, templateKey }) {
   const tmpl = templateKey ? WORKS_TEMPLATES[templateKey] : null;
   return (
     <div>
       {tmpl && (
-        <button onClick={() => onChange(tmpl)} style={{ marginBottom:8, padding:"5px 14px", borderRadius:6, background:C.greenLight, border:"1px solid "+C.border, color:C.green, fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-          ↙ Use Template
+        <button onClick={() => onChange(tmpl)} style={{ marginBottom:10, padding:"10px 18px", borderRadius:9, background:C.green, border:"none", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:8, boxShadow:"0 2px 8px rgba(90,154,58,0.25)" }}>
+          <span style={{fontSize:16}}>📋</span> Use Standard Template
         </button>
       )}
       <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
         style={{ width:"100%", boxSizing:"border-box", padding:"11px 14px", borderRadius:10, border:"1.5px solid "+C.border, background:C.white, color:C.text, fontSize:14, fontFamily:"inherit", resize:"vertical", lineHeight:1.6, outline:"none" }} />
-      <div style={{ marginTop:7 }}>
-        {supported
-          ? <button onClick={listening ? stop : start} style={{ display:"flex", alignItems:"center", gap:7, padding:"7px 16px", borderRadius:8, background:listening ? C.red : C.green, border:"none", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-              <span>{listening ? "⏹" : "🎙"}</span>
-              {listening ? <span style={{animation:"pulse 1s infinite"}}>Recording…</span> : "Speak"}
-            </button>
-          : <span style={{fontSize:12,color:C.muted}}>Use Wispr Flow or type directly</span>
-        }
-      </div>
     </div>
   );
 }
@@ -398,7 +369,7 @@ function Stepper({ value, onChange, min = 0, max = 99 }) {
   return (
     <div style={{ display:"inline-flex", alignItems:"center", background:C.white, borderRadius:8, border:"1.5px solid "+C.border, overflow:"hidden" }}>
       <button onClick={() => onChange(Math.max(min, value - 1))}
-        style={{ width:38, height:38, background:"none", border:"none", borderRight:"1px solid "+C.border, color:C.green, fontSize:20, fontWeight:700, cursor:"pointer", lineHeight:1 }}>−</button>
+        style={{ width:38, height:38, background:"none", border:"none", borderRight:"1px solid "+C.border, color: value <= min ? C.border : C.green, fontSize:20, fontWeight:700, cursor: value <= min ? "default" : "pointer", lineHeight:1 }}>−</button>
       <input type="number" value={value}
         onChange={e => onChange(Math.max(min, Math.min(max, parseInt(e.target.value) || 0)))}
         style={{ width:44, textAlign:"center", background:"none", border:"none", color:C.text, fontSize:16, fontWeight:700, fontFamily:"inherit", outline:"none" }} />
@@ -518,13 +489,13 @@ function MouldForm({ onResult }) {
     setLoading(false);
   };
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><VoiceField value={areas} onChange={setAreas} placeholder="e.g. guest room, music room, hallway ceiling…"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. guest room, music room, hallway ceiling…"/></Sec>
     <Sec number={2} title="Other Trades Required">
       <span style={lbl}>Any trades needed before works begin?</span>
       <YesNo value={otherTrades} onChange={setOtherTrades}/>
-      {otherTrades==="yes"&&<div style={{marginTop:12}}><VoiceField value={tradesDetail} onChange={setTradesDetail} placeholder="e.g. Electrician to isolate power outlets…" rows={2}/></div>}
+      {otherTrades==="yes"&&<div style={{marginTop:12}}><TextField value={tradesDetail} onChange={setTradesDetail} placeholder="e.g. Electrician to isolate power outlets…" rows={2}/></div>}
     </Sec>
-    <Sec number={3} title="Works Required"><VoiceField value={works} onChange={setWorks} placeholder="Describe what needs to be done — speak or type…" rows={4} templateKey="mould"/></Sec>
+    <Sec number={3} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe what needs to be done — speak or type…" rows={4} templateKey="mould"/></Sec>
     <Sec number={4} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
@@ -535,11 +506,11 @@ function MouldForm({ onResult }) {
     <Sec number={6} title="Consumables">
       <span style={lbl}>Anything special beyond the standard kit?</span>
       <YesNo value={specCons} onChange={setSpecCons}/>
-      {specCons==="yes"&&<div style={{marginTop:12}}><VoiceField value={consDetail} onChange={setConsDetail} placeholder="e.g. floor protection, containment poles…" rows={2}/></div>}
+      {specCons==="yes"&&<div style={{marginTop:12}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. floor protection, containment poles…" rows={2}/></div>}
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:12}}>{CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}</div>
     </Sec>
     <Sec number={7} title="Additional Requirements">
-      <VoiceField value={addReqs} onChange={setAddReqs} placeholder="e.g. skip bin, off-site storage, truck access…" rows={2}/>
+      <TextField value={addReqs} onChange={setAddReqs} placeholder="e.g. skip bin, off-site storage, truck access…" rows={2}/>
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>{["Skip bin","Off-site storage","Truck access","Scaffolding","Pod / portable storage"].map(ex=><span key={ex} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px dashed "+C.border,borderRadius:5,padding:"3px 9px"}}>e.g. {ex}</span>)}</div>
     </Sec>
     <GenBtn onClick={go} loading={loading}/>
@@ -563,8 +534,8 @@ function ContentsForm({ onResult }) {
     setLoading(false);
   };
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><VoiceField value={areas} onChange={setAreas} placeholder="e.g. entire property…"/></Sec>
-    <Sec number={2} title="Works Required"><VoiceField value={works} onChange={setWorks} placeholder="Describe contents works…" rows={4} templateKey="contents"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. entire property…"/></Sec>
+    <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe contents works…" rows={4} templateKey="contents"/></Sec>
     <Sec number={3} title="Labour by Phase">
       {PHASE_DEF.map(p=>(
         <div key={p.key} style={{marginBottom:16}}>
@@ -580,9 +551,9 @@ function ContentsForm({ onResult }) {
     <Sec number={5} title="Truck & Storage">
       <div style={{marginBottom:16}}><span style={lbl}>Truck — days required</span><Stepper value={truckDays} onChange={setTruckDays} min={0}/></div>
       <span style={lbl}>Off-site storage capacity</span>
-      <VoiceField value={storageSize} onChange={setStorageSize} placeholder="e.g. ≈ 20 m², large unit, half carriage…" rows={1}/>
+      <TextField value={storageSize} onChange={setStorageSize} placeholder="e.g. ≈ 20 m², large unit, half carriage…" rows={1}/>
     </Sec>
-    <Sec number={6} title="Additional Requirements"><VoiceField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={6} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -602,19 +573,19 @@ function StripOutForm({ onResult }) {
     setLoading(false);
   };
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><VoiceField value={areas} onChange={setAreas} placeholder="e.g. ground floor, entire property…"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. ground floor, entire property…"/></Sec>
     <Sec number={2} title="Other Trades Required">
-      <span style={lbl}>Electrician (leave blank if not needed)</span><VoiceField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical outlets below 1200mm…" rows={2}/>
-      <div style={{marginTop:12}}><span style={lbl}>Plumber</span><VoiceField value={plumb} onChange={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…" rows={2}/></div>
-      <div style={{marginTop:12}}><span style={lbl}>Builder</span><VoiceField value={builder} onChange={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…" rows={2}/></div>
-      <div style={{marginTop:12}}><span style={lbl}>Other</span><VoiceField value={other} onChange={setOther} placeholder="Any other trades or requirements…" rows={2}/></div>
+      <span style={lbl}>Electrician (leave blank if not needed)</span><TextField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical outlets below 1200mm…" rows={2}/>
+      <div style={{marginTop:12}}><span style={lbl}>Plumber</span><TextField value={plumb} onChange={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…" rows={2}/></div>
+      <div style={{marginTop:12}}><span style={lbl}>Builder</span><TextField value={builder} onChange={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…" rows={2}/></div>
+      <div style={{marginTop:12}}><span style={lbl}>Other</span><TextField value={other} onChange={setOther} placeholder="Any other trades or requirements…" rows={2}/></div>
     </Sec>
     <Sec number={3} title="Asbestos"><span style={lbl}>Clearance certificate required?</span><YesNo value={asbestos} onChange={setAsbestos}/></Sec>
     <Sec number={4} title="Skip Bin">
       <YesNo value={skipBin} onChange={setSkipBin}/>
-      {skipBin==="yes"&&<div style={{marginTop:12}}><VoiceField value={skipDetail} onChange={setSkipDetail} placeholder="e.g. Medium skip bin for building materials…" rows={2}/></div>}
+      {skipBin==="yes"&&<div style={{marginTop:12}}><TextField value={skipDetail} onChange={setSkipDetail} placeholder="e.g. Medium skip bin for building materials…" rows={2}/></div>}
     </Sec>
-    <Sec number={5} title="Works Required"><VoiceField value={works} onChange={setWorks} placeholder="Describe strip out works…" rows={4} templateKey="stripout"/></Sec>
+    <Sec number={5} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe strip out works…" rows={4} templateKey="stripout"/></Sec>
     <Sec number={6} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
@@ -622,7 +593,7 @@ function StripOutForm({ onResult }) {
       </div>
     </Sec>
     <Sec number={7} title="Equipment"><EquipGrid defs={DEFS} values={equip} setValues={setEquip}/></Sec>
-    <Sec number={8} title="Additional Requirements"><VoiceField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={8} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -642,9 +613,9 @@ function FlooringForm({ onResult }) {
     setLoading(false);
   };
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><VoiceField value={areas} onChange={setAreas} placeholder="e.g. living area, entire ground floor…"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. living area, entire ground floor…"/></Sec>
     <Sec number={2} title="Vacate Recommended?"><span style={lbl}>Should the insured vacate during works?</span><YesNo value={vacate} onChange={setVacate}/></Sec>
-    <Sec number={3} title="Works Required"><VoiceField value={works} onChange={setWorks} placeholder="Describe flooring works…" rows={4} templateKey="flooring"/></Sec>
+    <Sec number={3} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe flooring works…" rows={4} templateKey="flooring"/></Sec>
     <Sec number={4} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
@@ -656,7 +627,7 @@ function FlooringForm({ onResult }) {
       <span style={lbl}>Truck required?</span><YesNo value={truck} onChange={setTruck}/>
       <div style={{marginTop:14}}><span style={lbl}>High-cost disposal?</span><YesNo value={highCost} onChange={setHighCost}/></div>
     </Sec>
-    <Sec number={7} title="Additional Requirements"><VoiceField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={7} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -691,7 +662,7 @@ function FloodForm({ onResult }) {
         <span style={{fontSize:13,fontWeight:700,color:C.green}}>Phase {num} — {title}</span>
       </div>
       <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:14}}>
-        <div><span style={lbl}>Works</span><VoiceField value={works} onChange={setWorks} placeholder={"Describe phase "+num+" works…"} rows={3} templateKey={tKey}/></div>
+        <div><span style={lbl}>Works</span><TextField value={works} onChange={setWorks} placeholder={"Describe phase "+num+" works…"} rows={3} templateKey={tKey}/></div>
         <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
           <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
           <div><span style={lbl}>Hours</span><Stepper value={hours} onChange={setHours} min={1} max={200}/></div>
@@ -702,11 +673,11 @@ function FloodForm({ onResult }) {
   );
 
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><VoiceField value={areas} onChange={setAreas} placeholder="e.g. entire ground floor, kitchen, living area…"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. entire ground floor, kitchen, living area…"/></Sec>
     <Sec number={2} title="Other Trades Required">
-      <span style={lbl}>Electrician</span><VoiceField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical below 1200mm…" rows={2}/>
-      <div style={{marginTop:12}}><span style={lbl}>Plumber</span><VoiceField value={plumb} onChange={setPlumb} placeholder="e.g. Isolate and disconnect all plumbing below 1200mm…" rows={2}/></div>
-      <div style={{marginTop:12}}><span style={lbl}>Builder</span><VoiceField value={builder} onChange={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…" rows={2}/></div>
+      <span style={lbl}>Electrician</span><TextField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical below 1200mm…" rows={2}/>
+      <div style={{marginTop:12}}><span style={lbl}>Plumber</span><TextField value={plumb} onChange={setPlumb} placeholder="e.g. Isolate and disconnect all plumbing below 1200mm…" rows={2}/></div>
+      <div style={{marginTop:12}}><span style={lbl}>Builder</span><TextField value={builder} onChange={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…" rows={2}/></div>
     </Sec>
     <div style={{marginBottom:14}}>
       <SectionTitle number={3} title="Phases"/>
@@ -715,8 +686,8 @@ function FloodForm({ onResult }) {
       <PhaseCard num={3} title="Site Preparation" works={w3} setWorks={setW3} tKey="flood_siteprep" techs={techs3} setTechs={setTechs3} hours={hours3} setHours={setHours3} defs={DEFS3} equip={equip3} setEquip={setEquip3}/>
       <PhaseCard num={4} title="Restoration Cleaning" works={w4} setWorks={setW4} tKey="flood_restoration" techs={techs4} setTechs={setTechs4} hours={hours4} setHours={setHours4} defs={DEFS4} equip={equip4} setEquip={setEquip4}/>
     </div>
-    <Sec number={4} title="Off-Site Storage"><VoiceField value={storageSize} onChange={setStorageSize} placeholder="e.g. large unit, ≈ 20m², taxi box…" rows={1}/></Sec>
-    <Sec number={5} title="Additional Requirements"><VoiceField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={4} title="Off-Site Storage"><TextField value={storageSize} onChange={setStorageSize} placeholder="e.g. large unit, ≈ 20m², taxi box…" rows={1}/></Sec>
+    <Sec number={5} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -735,8 +706,8 @@ function RestorationForm({ onResult }) {
     setLoading(false);
   };
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><VoiceField value={areas} onChange={setAreas} placeholder="e.g. master bedroom, bedroom 2, closet…"/></Sec>
-    <Sec number={2} title="Works Required"><VoiceField value={works} onChange={setWorks} placeholder="Describe restoration cleaning works…" rows={4} templateKey="restoration"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. master bedroom, bedroom 2, closet…"/></Sec>
+    <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe restoration cleaning works…" rows={4} templateKey="restoration"/></Sec>
     <Sec number={3} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
@@ -744,7 +715,7 @@ function RestorationForm({ onResult }) {
       </div>
     </Sec>
     <Sec number={4} title="Equipment"><EquipGrid defs={DEFS} values={equip} setValues={setEquip}/></Sec>
-    <Sec number={5} title="Additional Requirements"><VoiceField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={5} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -763,8 +734,8 @@ function DryingForm({ onResult }) {
     setLoading(false);
   };
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><VoiceField value={areas} onChange={setAreas} placeholder="e.g. main bedroom, bedroom 2, hallway…"/></Sec>
-    <Sec number={2} title="Works Required"><VoiceField value={works} onChange={setWorks} placeholder="Describe drying works…" rows={3} templateKey="drying"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. main bedroom, bedroom 2, hallway…"/></Sec>
+    <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe drying works…" rows={3} templateKey="drying"/></Sec>
     <Sec number={3} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
@@ -772,7 +743,7 @@ function DryingForm({ onResult }) {
       </div>
     </Sec>
     <Sec number={4} title="Equipment"><EquipGrid defs={DEFS} values={equip} setValues={setEquip}/></Sec>
-    <Sec number={5} title="Additional Requirements"><VoiceField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={5} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
