@@ -87,7 +87,7 @@ function buildMould(d, works) {
     "Antimicrobial solution","Plastic sheeting","PPE","Filters / bags",
     "Microfibre cloths","Containment doors","Multi tools blade","Blade",
     "Cloth tape/masking tape","Rags","Zip doors","Floor protection",
-    "Percide","Mould/Stain Blocker Paint","Duct roll",
+    "Percide","Mould/Stain Blocker Paint",
   ];
   if (d.specCons === "yes" && d.consDetail) cons.push(d.consDetail);
 
@@ -537,7 +537,7 @@ function MouldForm({ onResult }) {
   const DEFS_DRYING=[{key:"dehum",label:"Dehumidifier"},{key:"mover",label:"Air Mover / Fan"}];
   const DEFS_ALWAYS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"},{key:"poles",label:"Containment Poles"}];
 
-  const CONS_STD=["Antimicrobial solution","Plastic sheeting","PPE","Filters / bags","Microfibre cloths","Containment doors","Multi-tool blades","Blade","Cloth tape / masking tape","Rags","Zip doors","Floor protection","Percide","Mould/Stain Blocker Paint","Duct roll"];
+  const CONS_STD=["Antimicrobial solution","Plastic sheeting","PPE","Filters / bags","Microfibre cloths","Containment doors","Multi-tool blades","Blade","Cloth tape / masking tape","Rags","Zip doors","Floor protection","Percide","Mould/Stain Blocker Paint"];
 
   const go = async () => {
     setLoading(true);
