@@ -206,7 +206,7 @@ function buildContentsRelocation(d, works) {
   ].join("\n");
 }
 
-
+function buildStripout(d, works) {
   const trades = [];
   if (d.elec)    trades.push("Electrician\n" + d.elec);
   if (d.plumb)   trades.push("Plumber\n" + d.plumb);
