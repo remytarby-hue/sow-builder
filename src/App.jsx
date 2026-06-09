@@ -365,6 +365,7 @@ async function aiClean(text, mode = "inline") {
     bullets: context + "\n\nConvert the following technician notes into clean, professional bullet points suitable for a Scope of Work document. Use correct industry terminology. Output ONLY the bullet points, one per line, plain text, no dashes or asterisks. Fix spelling or transcription errors.\n\nNotes:\n" + text,
     inline:  context + "\n\nClean up the following field text: fix spelling, transcription errors, grammar, and translate to English if needed. Use correct industry terminology where appropriate. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
     trades:  context + "\n\nClean up the following trade requirement notes: fix spelling, transcription errors, grammar, and translate to English if needed. Keep professional and concise. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
+    translate: "Translate the following text to English if it is not already in English. Fix spelling errors. Output ONLY the translated/corrected text, nothing else. Do not add any explanation or extra words.\n\nText:\n" + text,
     sitenotes: context + "\n\nClean up the following site notes written by a technician. Fix spelling and transcription errors only. Keep every point exactly as written — do not add, remove, or interpret anything. Output each note as a separate line, plain text, no bullets or dashes.\n\nNotes:\n" + text,
   };
   try {
@@ -476,31 +477,29 @@ function EquipGrid({ defs, values, setValues }) {
 
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 100px 100px 28px", gap:"6px 8px", alignItems:"center", marginBottom:4 }}>
-        <span style={lbl}>Item</span>
-        <span style={{ ...lbl, textAlign:"center" }}>Qty</span>
-        <span style={{ ...lbl, textAlign:"center" }}>Days</span>
-        <span/>
-      </div>
       {allDefs.map(({ key, label, custom }) => (
-        <div key={key} style={{ display:"grid", gridTemplateColumns:"1fr 100px 100px 28px", gap:"6px 8px", alignItems:"center", marginBottom:10 }}>
-          <span style={{ fontSize:13, color:C.text }}>{label}</span>
-          <div style={{ display:"flex", justifyContent:"center" }}>
-            <Stepper value={values[key]?.qty ?? 0} onChange={v => setE(key, "qty", v)} />
+        <div key={key} style={{ marginBottom:14, paddingBottom:14, borderBottom:"1px solid "+C.border }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+            <span style={{ fontSize:14, color:C.text, fontWeight:600 }}>{label}</span>
+            {custom && <button onClick={() => removeCustom(key)} style={{ background:"none", border:"none", color:C.red, cursor:"pointer", fontSize:18, padding:"0 4px" }}>×</button>}
           </div>
-          <div style={{ display:"flex", justifyContent:"center" }}>
-            <Stepper value={values[key]?.days ?? 1} onChange={v => setE(key, "days", v)} />
+          <div style={{ display:"flex", gap:16 }}>
+            <div>
+              <span style={{ ...lbl, marginBottom:4 }}>Qty</span>
+              <Stepper value={values[key]?.qty ?? 0} onChange={v => setE(key, "qty", v)} />
+            </div>
+            <div>
+              <span style={{ ...lbl, marginBottom:4 }}>Days</span>
+              <Stepper value={values[key]?.days ?? 1} onChange={v => setE(key, "days", v)} />
+            </div>
           </div>
-          {custom
-            ? <button onClick={() => removeCustom(key)} style={{ background:"none", border:"none", color:C.red, fontSize:18, cursor:"pointer", padding:0, lineHeight:1 }}>×</button>
-            : <span/>}
         </div>
       ))}
-      <div style={{ display:"flex", gap:8, marginTop:10 }}>
+      <div style={{ display:"flex", gap:8, marginTop:4 }}>
         <input value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key==="Enter"&&addCustom()}
           placeholder="Add equipment…"
-          style={{ flex:1, padding:"8px 12px", borderRadius:8, border:"1.5px solid "+C.border, background:C.subtle, color:C.text, fontSize:13, fontFamily:"inherit", outline:"none" }} />
-        <button onClick={addCustom} style={{ padding:"8px 16px", borderRadius:8, background:C.greenLight, border:"1.5px solid "+C.border, color:C.green, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ Add</button>
+          style={{ flex:1, padding:"10px 12px", borderRadius:8, border:"1.5px solid "+C.border, background:C.subtle, color:C.text, fontSize:13, fontFamily:"inherit", outline:"none" }} />
+        <button onClick={addCustom} style={{ padding:"10px 18px", borderRadius:8, background:C.greenLight, border:"1.5px solid "+C.border, color:C.green, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>+ Add</button>
       </div>
     </div>
   );
@@ -543,14 +542,14 @@ function MouldForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "inline"    },
+      areas:       { text: areas,       mode: "translate" },
       builder:     { text: builder,     mode: "trades"    },
       electrician: { text: electrician, mode: "trades"    },
       plumber:     { text: plumber,     mode: "trades"    },
       otherTrade:  { text: otherTrade,  mode: "trades"    },
       works:       { text: works || WORKS_TEMPLATES.mould, mode: "bullets" },
-      consDetail:  { text: consDetail,  mode: "inline"    },
-      addReqs:     { text: addReqs,     mode: "inline"    },
+      consDetail:  { text: consDetail,  mode: "translate"    },
+      addReqs:     { text: addReqs,     mode: "translate"    },
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
     onResult(buildMould({
@@ -664,10 +663,10 @@ function ContentsForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "inline"  },
+      areas:       { text: areas,       mode: "translate"  },
       works:       { text: works || WORKS_TEMPLATES.contents, mode: "bullets" },
-      storageSize: { text: storageSize, mode: "inline"  },
-      addReqs:     { text: addReqs,     mode: "inline"  },
+      storageSize: { text: storageSize, mode: "translate"  },
+      addReqs:     { text: addReqs,     mode: "translate"  },
     });
     onResult(buildContents({areas:cleaned.areas,phases,equip,truckDays,storageSize:cleaned.storageSize,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
@@ -708,14 +707,14 @@ function StripOutForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:      { text: areas,      mode: "inline"  },
+      areas:      { text: areas,      mode: "translate"  },
       elec:       { text: elec,       mode: "trades"  },
       plumb:      { text: plumb,      mode: "trades"  },
       builder:    { text: builder,    mode: "trades"  },
       other:      { text: other,      mode: "trades"  },
-      skipDetail: { text: skipDetail, mode: "inline"  },
+      skipDetail: { text: skipDetail, mode: "translate"  },
       works:      { text: works || WORKS_TEMPLATES.stripout, mode: "bullets" },
-      addReqs:    { text: addReqs,    mode: "inline"  },
+      addReqs:    { text: addReqs,    mode: "translate"  },
     });
     onResult(buildStripout({areas:cleaned.areas,elec:cleaned.elec,plumb:cleaned.plumb,builder:cleaned.builder,other:cleaned.other,asbestos,skipBin,skipDetail:cleaned.skipDetail,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
@@ -757,9 +756,9 @@ function FlooringForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:   { text: areas,   mode: "inline"  },
+      areas:   { text: areas,   mode: "translate"  },
       works:   { text: works || WORKS_TEMPLATES.flooring, mode: "bullets" },
-      addReqs: { text: addReqs, mode: "inline"  },
+      addReqs: { text: addReqs, mode: "translate"  },
     });
     onResult(buildFlooring({areas:cleaned.areas,vacate,techs,hours,equip,truck,highCost,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
@@ -801,7 +800,7 @@ function FloodForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "inline"  },
+      areas:       { text: areas,       mode: "translate"  },
       elec:        { text: elec,        mode: "trades"  },
       plumb:       { text: plumb,       mode: "trades"  },
       builder:     { text: builder,     mode: "trades"  },
@@ -809,8 +808,8 @@ function FloodForm({ onResult }) {
       w2:          { text: w2 || WORKS_TEMPLATES.flood_stripout,   mode: "bullets" },
       w3:          { text: w3 || WORKS_TEMPLATES.flood_siteprep,   mode: "bullets" },
       w4:          { text: w4 || WORKS_TEMPLATES.flood_restoration,mode: "bullets" },
-      storageSize: { text: storageSize, mode: "inline"  },
-      addReqs:     { text: addReqs,     mode: "inline"  },
+      storageSize: { text: storageSize, mode: "translate"  },
+      addReqs:     { text: addReqs,     mode: "translate"  },
     });
     onResult(buildFlood({areas:cleaned.areas,elec:cleaned.elec,plumb:cleaned.plumb,builder:cleaned.builder,techs1,hours1,equip1,techs2,hours2,equip2,techs3,hours3,equip3,techs4,hours4,equip4,storageSize:cleaned.storageSize,addReqs:cleaned.addReqs}, {w1:cleaned.w1,w2:cleaned.w2,w3:cleaned.w3,w4:cleaned.w4}));
     setLoading(false);
@@ -862,9 +861,9 @@ function RestorationForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:   { text: areas,   mode: "inline"  },
+      areas:   { text: areas,   mode: "translate"  },
       works:   { text: works || WORKS_TEMPLATES.restoration, mode: "bullets" },
-      addReqs: { text: addReqs, mode: "inline"  },
+      addReqs: { text: addReqs, mode: "translate"  },
     });
     onResult(buildRestoration({areas:cleaned.areas,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
@@ -894,9 +893,9 @@ function DryingForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:   { text: areas,   mode: "inline"  },
+      areas:   { text: areas,   mode: "translate"  },
       works:   { text: works || WORKS_TEMPLATES.drying, mode: "bullets" },
-      addReqs: { text: addReqs, mode: "inline"  },
+      addReqs: { text: addReqs, mode: "translate"  },
     });
     onResult(buildDrying({areas:cleaned.areas,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
     setLoading(false);
