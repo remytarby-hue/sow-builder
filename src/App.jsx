@@ -302,73 +302,89 @@ function buildFlooring(d, works) {
 }
 
 function buildFlood(d, works) {
-  const trades = [];
-  if (d.elec)    trades.push("Electrician\n" + d.elec);
-  if (d.plumb)   trades.push("Plumber\n" + d.plumb);
-  if (d.builder) trades.push("Builder\n" + d.builder);
-  return [
-    "SOW - Flood Remediation",
-    "",
-    "Other trades required prior to commencement of works:",
-    trades.length ? trades.join("\n\n") : "None",
-    "",
-    "Room Name / Area: " + (d.areas || "To be confirmed"),
-    "",
-    "**Preparation for Restoration Cleaning**",
-    "",
-    "1 - Relocation of contents:",
-    toButtons(works.w1),
-    ...(d.storageSize ? ["\t⁃ Storage unit recommended: " + d.storageSize] : []),
-    "",
-    "Total Labour Hours",
-    "\t• Technician hours: " + d.techs1 + " Technician" + (d.techs1 > 1 ? "s" : "") + " x " + d.hours1 + " hours",
-    "",
-    "Equipment Breakdown",
-    equipBlock([{key:"truck",label:"Truck"},{key:"trolley",label:"Trolley/Hand trolley"},{key:"straps",label:"Lifting straps"}], d.equip1),
-    "",
-    "Consumables Breakdown",
-    "\t• Moving boxes ≈ 50\n\t• Packing supplies (butcher paper, bubble wrap, packing tape, furniture blanket, shrink wrap, etc.)\n\t• Antimicrobial\n\t• Rags",
-    "",
-    "2 - Strip-Out:",
-    toButtons(works.w2),
-    "",
-    "Total Labour Hours",
-    "\t• Technician hours: " + d.techs2 + " Technician" + (d.techs2 > 1 ? "s" : "") + " x " + d.hours2 + " hours",
-    "",
-    "Equipment Breakdown",
-    "\t• Truck for disposal.",
-    equipBlock([{key:"scrubber",label:"Air Scrubbers"},{key:"hepa",label:"HEPA Vacuum"}], d.equip2),
-    "",
-    "Consumables Breakdown",
-    "\t• Plastic sheeting\n\t• PPE\n\t• Rubbish bags",
-    "",
-    "3 - Site preparation for Restoration cleaning:",
-    toButtons(works.w3),
-    "",
-    "Total Labour Hours",
-    "\t• Technician hours: " + d.techs3 + " Technician" + (d.techs3 > 1 ? "s" : "") + " x " + d.hours3 + " hours",
-    "",
-    "Equipment Breakdown",
-    equipBlock([{key:"scrubber",label:"Air Scrubbers"}], d.equip3),
-    "",
-    "**Restoration Cleaning**",
-    "",
-    "4 - Restoration Cleaning:",
-    toButtons(works.w4),
-    "",
-    "Total Labour Hours",
-    "\t• Technician hours: " + d.techs4 + " Technician" + (d.techs4 > 1 ? "s" : "") + " x " + d.hours4 + " hours",
-    "",
-    "Equipment Breakdown",
-    equipBlock([{key:"dehum",label:"Dehumidifiers"},{key:"scrubber",label:"Air Scrubbers"},{key:"mover",label:"Air Movers / Fans"},{key:"hepa",label:"HEPA Vacuumed"}], d.equip4),
-    "",
-    "Consumables Breakdown",
-    "\t• Antimicrobial solution\n\t• Plastic sheeting\n\t• PPE\n\t• Filters / bags\n\t• Microfibre cloths\n\t• Blade\n\t• Cloth tape/masking tape\n\t• Rags\n\t• Rubbish bags\n\t• Percide\n\t• Mop pads\n\t• Mop\n\t• Hand brushes\n\t• White vinegar",
-    "",
-    "Final Inspection:",
-    "\t• Conduct a final walkthrough and moisture level check to confirm that the property has been properly cleaned, sanitised, and dried.",
-    ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
-  ].join("\n");
+  const sections = ["SOW - Flood Remediation", "", "Room Name / Area: " + (d.areas || "To be confirmed"), ""];
+
+  // Other trades (from strip out phase)
+  if (d.phase2 === "yes") {
+    const trades = [];
+    if (d.builderActive === "yes" && d.builder) trades.push("Builder:\n\t- " + d.builder);
+    if (d.elecActive === "yes" && d.elec)       trades.push("Electrician:\n\t- " + d.elec);
+    if (d.plumbActive === "yes" && d.plumb)     trades.push("Plumber:\n\t- " + d.plumb);
+    if (d.otherTradeActive === "yes" && d.otherTrade) trades.push("Other:\n\t- " + d.otherTrade);
+    if (d.asbestos === "yes") trades.push("Other:\n\t- Asbestos clearance certificate required as there is potential asbestos on-site.");
+    if (d.skipBin === "yes")  trades.push("Other:\n\t- " + (d.skipDetail || "Installation of a skip bin to dispose of building materials."));
+    if (trades.length) {
+      sections.push("Other trades required prior to commencement of works:");
+      sections.push(trades.join("\n\n"));
+      sections.push("");
+    }
+  }
+
+  if (d.siteNotes) { sections.push("Site Notes:"); sections.push(tobullets(d.siteNotes)); sections.push(""); }
+
+  sections.push("**Preparation for Restoration Cleaning**");
+
+  // Phase 1 — Contents Remediation
+  if (d.phase1 === "yes") {
+    sections.push("", "1 - Contents Remediation:");
+    sections.push(tobullets(works.w1));
+    const locLines = [];
+    if (d.onsite === "yes" && d.onsiteRoom) locLines.push("\t• On-site relocation to: " + d.onsiteRoom);
+    if (d.offsite === "yes" && d.storageSize) locLines.push("\t• Off-site storage capacity required: " + d.storageSize);
+    else if (d.offsite === "yes") locLines.push("\t• Off-site storage required — capacity to be confirmed");
+    if (locLines.length) { sections.push("Relocation Details:"); sections.push(locLines.join("\n")); }
+    sections.push("", "Total Labour Hours");
+    sections.push("\t• Technician hours: " + d.techs1 + " Technician" + (d.techs1>1?"s":"") + " x " + d.hours1 + " hours");
+    sections.push("", "Equipment Breakdown");
+    sections.push(equipBlock([{key:"truck",label:"Truck"},{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}], d.equip1));
+    sections.push("", "Consumables Breakdown");
+    sections.push("\t• Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)\n\t• Antimicrobial\n\t• Rags");
+    if (d.truck1 === "yes") sections.push("", "Truck required for " + d.truckDays1 + " day" + (d.truckDays1>1?"s":"") + ".");
+  }
+
+  // Phase 2 — Strip Out
+  if (d.phase2 === "yes") {
+    sections.push("", "2 - Strip Out:");
+    sections.push(tobullets(works.w2));
+    sections.push("", "Total Labour Hours");
+    sections.push("\t• Technician hours: " + d.techs2 + " Technician" + (d.techs2>1?"s":"") + " x " + d.hours2 + " hours");
+    sections.push("", "Equipment Breakdown");
+    if (d.truck2 === "yes") sections.push("\t• Truck for disposal.");
+    sections.push(equipBlock([{key:"scrubber",label:"Air Scrubbers"},{key:"hepa",label:"HEPA Vacuum"}], d.equip2));
+    sections.push("", "Consumables Breakdown");
+    sections.push("\t• Plastic sheeting\n\t• PPE\n\t• Rubbish bags");
+  }
+
+  // Phase 3 — Site Preparation
+  if (d.phase3 === "yes") {
+    sections.push("", "3 - Site Preparation for Restoration Cleaning:");
+    sections.push(tobullets(works.w3));
+    sections.push("", "Total Labour Hours");
+    sections.push("\t• Technician hours: " + d.techs3 + " Technician" + (d.techs3>1?"s":"") + " x " + d.hours3 + " hours");
+    sections.push("", "Equipment Breakdown");
+    sections.push(equipBlock([{key:"scrubber",label:"Air Scrubbers"}], d.equip3));
+  }
+
+  // Phase 4 — Restoration Cleaning
+  sections.push("", "**Restoration Cleaning**", "");
+  sections.push("4 - Restoration Cleaning:");
+  sections.push(tobullets(works.w4));
+  sections.push("", "Total Labour Hours");
+  sections.push("\t• Technician hours: " + d.techs4 + " Technician" + (d.techs4>1?"s":"") + " x " + d.hours4 + " hours");
+  sections.push("", "Equipment Breakdown");
+  const eq4Defs = [];
+  if (d.drying4 === "yes") { eq4Defs.push({key:"dehum",label:"Dehumidifiers"}); eq4Defs.push({key:"mover",label:"Air Movers / Fans"}); }
+  eq4Defs.push({key:"scrubber",label:"Air Scrubbers"}); eq4Defs.push({key:"hepa",label:"HEPA Vacuumed"});
+  sections.push(equipBlock(eq4Defs, d.equip4));
+  sections.push("", "Consumables Breakdown");
+  sections.push("\t• Antimicrobial solution\n\t• Plastic sheeting\n\t• PPE\n\t• Filters / bags\n\t• Microfibre cloths\n\t• Blade\n\t• Cloth tape/masking tape\n\t• Rags\n\t• Rubbish bags\n\t• Percide\n\t• Mop pads\n\t• Mop\n\t• Hand brushes\n\t• White vinegar");
+
+  sections.push("", "Final Inspection:");
+  sections.push("\t• Conduct a final walkthrough and moisture level check to confirm that the property has been properly cleaned, sanitised, and dried.");
+
+  if (d.addReqs) { sections.push("", "Additional Requirements"); sections.push(d.addReqs.split(/[,\n]/).filter(Boolean).map(r=>"\t• "+r.trim()).join("\n")); }
+
+  return sections.join("\n");
 }
 
 // alias so typo above works
@@ -1212,68 +1228,206 @@ function FlooringForm({ onResult }) {
 
 // ── FLOOD FORM ────────────────────────────────────────────────────────────────
 function FloodForm({ onResult }) {
-  const [areas,setAreas]=useState(""); const [elec,setElec]=useState(""); const [plumb,setPlumb]=useState(""); const [builder,setBuilder]=useState("");
-  const [w1,setW1]=useState(""); const [techs1,setTechs1]=useState(3); const [hours1,setHours1]=useState(12); const [equip1,setEquip1]=useState({truck:{qty:1,days:1},trolley:{qty:1,days:1},straps:{qty:1,days:1}});
-  const [w2,setW2]=useState(""); const [techs2,setTechs2]=useState(3); const [hours2,setHours2]=useState(20); const [equip2,setEquip2]=useState({scrubber:{qty:4,days:2},hepa:{qty:1,days:1}});
-  const [w3,setW3]=useState(""); const [techs3,setTechs3]=useState(2); const [hours3,setHours3]=useState(4); const [equip3,setEquip3]=useState({scrubber:{qty:4,days:1}});
-  const [w4,setW4]=useState(""); const [techs4,setTechs4]=useState(2); const [hours4,setHours4]=useState(15); const [equip4,setEquip4]=useState({dehum:{qty:3,days:5},scrubber:{qty:3,days:1},mover:{qty:6,days:5},hepa:{qty:2,days:1}});
-  const [storageSize,setStorageSize]=useState(""); const [addReqs,setAddReqs]=useState("");
+  const [areas,setAreas]=useState("");
+  // Phase toggles
+  const [phase1,setPhase1]=useState(null);
+  const [phase2,setPhase2]=useState(null);
+  const [phase3,setPhase3]=useState(null);
+
+  // Phase 1 — Contents Remediation
+  const [w1,setW1]=useState(""); const [techs1,setTechs1]=useState(3); const [hours1,setHours1]=useState(12);
+  const [equip1,setEquip1]=useState({trolley:{qty:1,days:1},straps:{qty:1,days:1}});
+  const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
+  const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
+  const [truck1,setTruck1]=useState(null); const [truckDays1,setTruckDays1]=useState(1);
+
+  // Phase 2 — Strip Out
+  const [w2,setW2]=useState(""); const [techs2,setTechs2]=useState(3); const [hours2,setHours2]=useState(20);
+  const [equip2,setEquip2]=useState({scrubber:{qty:4,days:2},hepa:{qty:1,days:1}});
+  const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
+  const [elecActive,setElecActive]=useState(null); const [elec,setElec]=useState("");
+  const [plumbActive,setPlumbActive]=useState(null); const [plumb,setPlumb]=useState("");
+  const [otherTradeActive,setOtherTradeActive]=useState(null); const [otherTrade,setOtherTrade]=useState("");
+  const [asbestos,setAsbestos]=useState(null);
+  const [skipBin,setSkipBin]=useState(null); const [skipDetail,setSkipDetail]=useState("");
+  const [truck2,setTruck2]=useState(null);
+
+  // Phase 3 — Site Preparation
+  const [w3,setW3]=useState(""); const [techs3,setTechs3]=useState(2); const [hours3,setHours3]=useState(4);
+  const [equip3,setEquip3]=useState({scrubber:{qty:4,days:1}});
+
+  // Phase 4 — Restoration Cleaning (always shown)
+  const [w4,setW4]=useState(""); const [techs4,setTechs4]=useState(2); const [hours4,setHours4]=useState(15);
+  const [drying4,setDrying4]=useState(null);
+  const [equip4,setEquip4]=useState({dehum:{qty:3,days:5},mover:{qty:6,days:5},scrubber:{qty:3,days:1},hepa:{qty:2,days:1}});
+
+  const [addReqs,setAddReqs]=useState("");
+  const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
-  const DEFS1=[{key:"truck",label:"Truck"},{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}];
+
+  const DEFS1=[{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}];
   const DEFS2=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"}];
   const DEFS3=[{key:"scrubber",label:"Air Scrubber (AFD)"}];
-  const DEFS4=[{key:"dehum",label:"Dehumidifier"},{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"mover",label:"Air Mover / Fan"},{key:"hepa",label:"HEPA Vacuum"}];
+  const DEFS4_DRYING=[{key:"dehum",label:"Dehumidifier"},{key:"mover",label:"Air Mover / Fan"}];
+  const DEFS4_ALWAYS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"}];
 
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "translate"  },
-      elec:        { text: elec,        mode: "trades"  },
-      plumb:       { text: plumb,       mode: "trades"  },
-      builder:     { text: builder,     mode: "trades"  },
-      w1:          { text: w1 || WORKS_TEMPLATES.flood_contents,   mode: "bullets" },
-      w2:          { text: w2 || WORKS_TEMPLATES.flood_stripout,   mode: "bullets" },
-      w3:          { text: w3 || WORKS_TEMPLATES.flood_siteprep,   mode: "bullets" },
-      w4:          { text: w4 || WORKS_TEMPLATES.flood_restoration,mode: "bullets" },
-      storageSize: { text: storageSize, mode: "translate"  },
-      addReqs:     { text: addReqs,     mode: "translate"  },
+      areas:       { text: areas,       mode: "translate" },
+      builder:     { text: builder,     mode: "trades"    },
+      elec:        { text: elec,        mode: "trades"    },
+      plumb:       { text: plumb,       mode: "trades"    },
+      otherTrade:  { text: otherTrade,  mode: "trades"    },
+      skipDetail:  { text: skipDetail,  mode: "translate" },
+      onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
+      storageSize: { text: storageSize, mode: "translate" },
+      w1: { text: w1 || WORKS_TEMPLATES.flood_contents,    mode: "bullets" },
+      w2: { text: w2 || WORKS_TEMPLATES.flood_stripout,    mode: "bullets" },
+      w3: { text: w3 || WORKS_TEMPLATES.flood_siteprep,    mode: "bullets" },
+      w4: { text: w4 || WORKS_TEMPLATES.flood_restoration, mode: "bullets" },
+      addReqs:    { text: addReqs,    mode: "translate"  },
+      siteNotes:  { text: siteNotes,  mode: "sitenotes"  },
     });
-    onResult(buildFlood({areas:cleaned.areas,elec:cleaned.elec,plumb:cleaned.plumb,builder:cleaned.builder,techs1,hours1,equip1,techs2,hours2,equip2,techs3,hours3,equip3,techs4,hours4,equip4,storageSize:cleaned.storageSize,addReqs:cleaned.addReqs}, {w1:cleaned.w1,w2:cleaned.w2,w3:cleaned.w3,w4:cleaned.w4}));
+    onResult(buildFlood({
+      areas:cleaned.areas, phase1, phase2, phase3,
+      techs1, hours1, equip1, onsite, onsiteRoom:cleaned.onsiteRoom,
+      offsite, storageSize:cleaned.storageSize, truck1, truckDays1,
+      builderActive, builder:cleaned.builder, elecActive, elec:cleaned.elec,
+      plumbActive, plumb:cleaned.plumb, otherTradeActive, otherTrade:cleaned.otherTrade,
+      asbestos, skipBin, skipDetail:cleaned.skipDetail, truck2,
+      techs2, hours2, equip2,
+      techs3, hours3, equip3,
+      techs4, hours4, drying4, equip4,
+      addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+    }, {w1:cleaned.w1, w2:cleaned.w2, w3:cleaned.w3, w4:cleaned.w4}));
     setLoading(false);
   };
 
-  const PhaseCard = ({num,title,works,setWorks,tKey,techs,setTechs,hours,setHours,defs,equip,setEquip}) => (
-    <div style={{marginBottom:16,border:"1.5px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
-      <div style={{background:C.greenLight,padding:"10px 16px",borderBottom:"1px solid "+C.border}}>
-        <span style={{fontSize:13,fontWeight:700,color:C.green}}>Phase {num} — {title}</span>
-      </div>
-      <div style={{padding:"14px 16px",display:"flex",flexDirection:"column",gap:14}}>
-        <div><span style={lbl}>Works</span><TextField value={works} onChange={setWorks} placeholder={"Describe phase "+num+" works…"} rows={3} templateKey={tKey}/></div>
-        <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-          <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
-          <div><span style={lbl}>Hours</span><Stepper value={hours} onChange={setHours} min={1} max={200}/></div>
-        </div>
-        <div><span style={lbl}>Equipment</span><EquipGrid defs={defs} values={equip} setValues={setEquip}/></div>
-      </div>
+  const phaseHeader = (num, title, active, setActive) => (
+    <div style={{background:C.greenLight, padding:"12px 16px", borderBottom:"1px solid "+C.border, display:"flex", alignItems:"center", justifyContent:"space-between"}}>
+      <span style={{fontSize:13, fontWeight:700, color:C.green}}>Phase {num} — {title}</span>
+      <YesNo value={active} onChange={setActive}/>
     </div>
   );
 
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. entire ground floor, kitchen, living area…"/></Sec>
-    <Sec number={2} title="Other Trades Required">
-      <span style={lbl}>Electrician</span><TextField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical below 1200mm…" rows={2}/>
-      <div style={{marginTop:12}}><span style={lbl}>Plumber</span><TextField value={plumb} onChange={setPlumb} placeholder="e.g. Isolate and disconnect all plumbing below 1200mm…" rows={2}/></div>
-      <div style={{marginTop:12}}><span style={lbl}>Builder</span><TextField value={builder} onChange={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…" rows={2}/></div>
+    <Sec number={1} title="Areas / Rooms Affected">
+      <TextField value={areas} onChange={setAreas} placeholder="e.g. entire ground floor, kitchen, living area…"/>
     </Sec>
-    <div style={{marginBottom:14}}>
-      <SectionTitle number={3} title="Phases"/>
-      <PhaseCard num={1} title="Relocation of Contents" works={w1} setWorks={setW1} tKey="flood_contents" techs={techs1} setTechs={setTechs1} hours={hours1} setHours={setHours1} defs={DEFS1} equip={equip1} setEquip={setEquip1}/>
-      <PhaseCard num={2} title="Strip Out" works={w2} setWorks={setW2} tKey="flood_stripout" techs={techs2} setTechs={setTechs2} hours={hours2} setHours={setHours2} defs={DEFS2} equip={equip2} setEquip={setEquip2}/>
-      <PhaseCard num={3} title="Site Preparation" works={w3} setWorks={setW3} tKey="flood_siteprep" techs={techs3} setTechs={setTechs3} hours={hours3} setHours={setHours3} defs={DEFS3} equip={equip3} setEquip={setEquip3}/>
-      <PhaseCard num={4} title="Restoration Cleaning" works={w4} setWorks={setW4} tKey="flood_restoration" techs={techs4} setTechs={setTechs4} hours={hours4} setHours={setHours4} defs={DEFS4} equip={equip4} setEquip={setEquip4}/>
+
+    {/* PHASE 1 — Contents Remediation */}
+    <div style={{marginBottom:14, border:"1.5px solid "+C.border, borderRadius:12, overflow:"hidden"}}>
+      {phaseHeader(1, "Contents Remediation", phase1, setPhase1)}
+      {phase1==="yes"&&<div style={{padding:"16px"}}>
+        <span style={lbl}>Works Required</span>
+        <TextField value={w1} onChange={setW1} placeholder="Describe contents remediation works…" rows={3} templateKey="flood_contents"/>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
+          <div><span style={lbl}>Technicians</span><Stepper value={techs1} onChange={setTechs1} min={1}/></div>
+          <div><span style={lbl}>Hours</span><Stepper value={hours1} onChange={setHours1} min={1} max={200}/></div>
+        </div>
+        <div style={{marginTop:14}}>
+          <span style={lbl}>On-site relocation?</span>
+          <YesNo value={onsite} onChange={setOnsite}/>
+          {onsite==="yes"&&<div style={{marginTop:10}}><span style={lbl}>Which room?</span><TextField value={onsiteRoom} onChange={setOnsiteRoom} placeholder="e.g. garage, living area…" rows={1}/></div>}
+        </div>
+        <div style={{marginTop:14}}>
+          <span style={lbl}>Off-site storage?</span>
+          <YesNo value={offsite} onChange={setOffsite}/>
+          {offsite==="yes"&&<div style={{marginTop:10}}><span style={lbl}>Capacity required</span><TextField value={storageSize} onChange={setStorageSize} placeholder="e.g. ≈ 20 m², large unit…" rows={1}/></div>}
+        </div>
+        <div style={{marginTop:14}}>
+          <span style={lbl}>Truck required?</span>
+          <YesNo value={truck1} onChange={setTruck1}/>
+          {truck1==="yes"&&<div style={{marginTop:10}}><span style={lbl}>Number of days</span><Stepper value={truckDays1} onChange={setTruckDays1} min={1}/></div>}
+        </div>
+        <div style={{marginTop:14}}><span style={lbl}>Equipment</span><EquipGrid defs={DEFS1} values={equip1} setValues={setEquip1}/></div>
+      </div>}
     </div>
-    <Sec number={4} title="Off-Site Storage"><TextField value={storageSize} onChange={setStorageSize} placeholder="e.g. large unit, ≈ 20m², taxi box…" rows={1}/></Sec>
-    <Sec number={5} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+
+    {/* PHASE 2 — Strip Out */}
+    <div style={{marginBottom:14, border:"1.5px solid "+C.border, borderRadius:12, overflow:"hidden"}}>
+      {phaseHeader(2, "Strip Out", phase2, setPhase2)}
+      {phase2==="yes"&&<div style={{padding:"16px"}}>
+        <span style={lbl}>Other Trades Required?</span>
+        <div style={{marginBottom:14}}>
+          {[{label:"Builder",active:builderActive,setActive:setBuilderActive,val:builder,setVal:setBuilder,ph:"e.g. Remove all fixed cabinetry below 1200mm…"},
+            {label:"Electrician",active:elecActive,setActive:setElecActive,val:elec,setVal:setElec,ph:"e.g. Disconnect and make safe all electrical below 1200mm…"},
+            {label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumb,setVal:setPlumb,ph:"e.g. Isolate and disconnect all plumbing below 1200mm…"},
+            {label:"Other",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist…"},
+          ].map(t=>(
+            <div key={t.label} style={{marginBottom:12, paddingBottom:12, borderBottom:"1px solid "+C.border}}>
+              <span style={{...lbl,color:C.green,marginBottom:6}}>{t.label}</span>
+              <YesNo value={t.active} onChange={t.setActive}/>
+              {t.active==="yes"&&<div style={{marginTop:8}}><TextField value={t.val} onChange={t.setVal} placeholder={t.ph} rows={2}/></div>}
+            </div>
+          ))}
+        </div>
+        <div style={{marginBottom:12}}><span style={lbl}>Asbestos clearance required?</span><YesNo value={asbestos} onChange={setAsbestos}/></div>
+        <div style={{marginBottom:14}}>
+          <span style={lbl}>Skip bin required?</span>
+          <YesNo value={skipBin} onChange={setSkipBin}/>
+          {skipBin==="yes"&&<div style={{marginTop:8}}><TextField value={skipDetail} onChange={setSkipDetail} placeholder="e.g. Medium skip bin…" rows={2}/></div>}
+        </div>
+        <span style={lbl}>Works Required</span>
+        <TextField value={w2} onChange={setW2} placeholder="Describe strip out works…" rows={3} templateKey="flood_stripout"/>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
+          <div><span style={lbl}>Technicians</span><Stepper value={techs2} onChange={setTechs2} min={1}/></div>
+          <div><span style={lbl}>Hours</span><Stepper value={hours2} onChange={setHours2} min={1} max={200}/></div>
+        </div>
+        <div style={{marginTop:14}}><span style={lbl}>Truck for disposal?</span><YesNo value={truck2} onChange={setTruck2}/></div>
+        <div style={{marginTop:14}}><span style={lbl}>Equipment</span><EquipGrid defs={DEFS2} values={equip2} setValues={setEquip2}/></div>
+      </div>}
+    </div>
+
+    {/* PHASE 3 — Site Preparation */}
+    <div style={{marginBottom:14, border:"1.5px solid "+C.border, borderRadius:12, overflow:"hidden"}}>
+      {phaseHeader(3, "Site Preparation", phase3, setPhase3)}
+      {phase3==="yes"&&<div style={{padding:"16px"}}>
+        <span style={lbl}>Works Required</span>
+        <TextField value={w3} onChange={setW3} placeholder="Describe site preparation works…" rows={3} templateKey="flood_siteprep"/>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
+          <div><span style={lbl}>Technicians</span><Stepper value={techs3} onChange={setTechs3} min={1}/></div>
+          <div><span style={lbl}>Hours</span><Stepper value={hours3} onChange={setHours3} min={1} max={200}/></div>
+        </div>
+        <div style={{marginTop:14}}><span style={lbl}>Equipment</span><EquipGrid defs={DEFS3} values={equip3} setValues={setEquip3}/></div>
+      </div>}
+    </div>
+
+    {/* PHASE 4 — Restoration Cleaning (always shown) */}
+    <div style={{marginBottom:14, border:"1.5px solid "+C.border, borderRadius:12, overflow:"hidden"}}>
+      <div style={{background:C.greenLight, padding:"12px 16px", borderBottom:"1px solid "+C.border}}>
+        <span style={{fontSize:13, fontWeight:700, color:C.green}}>Phase 4 — Restoration Cleaning</span>
+      </div>
+      <div style={{padding:"16px"}}>
+        <span style={lbl}>Works Required</span>
+        <TextField value={w4} onChange={setW4} placeholder="Describe restoration cleaning works…" rows={4} templateKey="flood_restoration"/>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
+          <div><span style={lbl}>Technicians</span><Stepper value={techs4} onChange={setTechs4} min={1}/></div>
+          <div><span style={lbl}>Hours</span><Stepper value={hours4} onChange={setHours4} min={1} max={200}/></div>
+        </div>
+        <div style={{marginTop:14}}>
+          <span style={lbl}>Drying equipment required?</span>
+          <YesNo value={drying4} onChange={setDrying4}/>
+          {drying4==="yes"&&<div style={{marginTop:12,paddingBottom:12,borderBottom:"1px solid "+C.border}}>
+            <EquipGrid defs={DEFS4_DRYING} values={equip4} setValues={setEquip4}/>
+          </div>}
+          <div style={{marginTop:12}}>
+            <span style={{...lbl,marginBottom:8}}>AFD & HEPA Vacuum</span>
+            <EquipGrid defs={DEFS4_ALWAYS} values={equip4} setValues={setEquip4}/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <Sec number={2} title="Additional Requirements">
+      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
+    </Sec>
+
+    <Sec number={3} title="Site Notes — Anything that could help attending technicians">
+      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling, elevator access, no parking on street…" rows={3}/>
+    </Sec>
+
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
