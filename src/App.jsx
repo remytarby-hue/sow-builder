@@ -16,7 +16,7 @@ const C = {
 
 const SOW_TYPES = [
   { id:"mould",              label:"Mould Remediation",      icon:"🍄" },
-  { id:"contents",           label:"Contents",               icon:"📦" },
+  { id:"contents",           label:"Contents Remediation",   icon:"📦" },
   { id:"contents_relocation",label:"Contents Relocation",    icon:"🚚" },
   { id:"stripout",           label:"Strip Out",              icon:"🔨" },
   { id:"flooring",           label:"Flooring Removal",       icon:"🪵" },
@@ -27,6 +27,7 @@ const SOW_TYPES = [
 
 const WORKS_TEMPLATES = {
   mould:            "Erection of containment to contain the work zone.\nEstablish negative air pressure using air filtration devices (AFDs).\nRemoval of the affected section of the [wall/ceiling].\nHEPA vac + sanitation of all affected surfaces.\nInstallation of drying equipment.\nEncapsulation of the affected building material as required.",
+  contents:         "Assessment and inventory of the affected items.\nRemoval of affected items for disposal.\nPacking and relocation of restorable/non-affected items.\nHEPA vac + sanitation of restorable items.\nReinstatement of contents.",
   contents_relocation: "Packing and relocation of contents.\nReinstatement of contents.",
   stripout:         "Strip out of walls in the affected areas up to 1200mm.\nRemoval of all affected insulation.",
   flooring:         "Removal of the affected floor covering.\nHEPA vac + sanitation of subfloor.\nInstallation of drying equipment.",
@@ -130,11 +131,18 @@ function buildContents(d, works) {
     {key:"reinstate",  label:"Reinstatement of contents"},
     {key:"final",      label:"Final checks and confirmation of completion"},
   ];
+
+  const locationLines = [];
+  if (d.onsite === "yes" && d.onsiteRoom) locationLines.push("\t• On-site relocation to: " + d.onsiteRoom);
+  if (d.offsite === "yes" && d.storageSize) locationLines.push("\t• Off-site storage capacity required: " + d.storageSize);
+  else if (d.offsite === "yes") locationLines.push("\t• Off-site storage required — capacity to be confirmed");
+
   return [
-    "SOW - Contents",
+    "SOW - Contents Remediation",
     "",
     "Room Name / Area: " + (d.areas || "Entire property"),
     "",
+    ...(locationLines.length ? ["Relocation Details:", locationLines.join("\n"), ""] : []),
     "\tWorks required:",
     tobullets(works),
     "",
@@ -151,14 +159,13 @@ function buildContents(d, works) {
     "Consumables Breakdown",
     "List of consumables required.",
     "\t• Antimicrobial solution\n\t• Filters / bags\n\t• Microfibre cloths\n\t• Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)",
-    "",
-    "Truck Required for " + d.truckDays + " day" + (d.truckDays > 1 ? "s" : "") + ":",
-    "\t• Relocation of contents\n\t• Disposal of non-restorable items\n\t• Reinstatement of contents",
-    "",
-    "Off-site storage capacity required: " + (d.storageSize || "To be confirmed"),
+    ...(d.specCons === "yes" && d.consDetail ? ["\t• " + d.consDetail] : []),
+    ...(d.truck === "yes" ? ["", "Truck Required for " + d.truckDays + " day" + (d.truckDays > 1 ? "s" : "") + ":", "\t• Relocation of contents\n\t• Disposal of non-restorable items\n\t• Reinstatement of contents"] : []),
     ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
+    ...(d.siteNotes ? ["", "Site Notes:", tobullets(d.siteNotes)] : []),
   ].join("\n");
 }
+
 
 function buildContentsRelocation(d, works) {
   const labourLines = [];
@@ -701,45 +708,140 @@ function MouldForm({ onResult }) {
 // ── CONTENTS FORM ─────────────────────────────────────────────────────────────
 function ContentsForm({ onResult }) {
   const [areas,setAreas]=useState(""); const [works,setWorks]=useState("");
-  const [phases,setPhases]=useState({initial:{techs:3,hours:20},remediation:{techs:2,hours:8},reinstate:{techs:3,hours:8},final:{techs:1,hours:2}});
+  const [phases,setPhases]=useState({
+    initial:    {active:null, techs:3, hours:20},
+    remediation:{active:null, techs:2, hours:8},
+    reinstate:  {active:null, techs:3, hours:8},
+    final:      {active:null, techs:1, hours:2},
+  });
   const [equip,setEquip]=useState({scrubber:{qty:1,days:1},hepa:{qty:2,days:1}});
-  const [truckDays,setTruckDays]=useState(4); const [storageSize,setStorageSize]=useState(""); const [addReqs,setAddReqs]=useState("");
+  const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
+  const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
+  const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(4);
+  const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
+  const [addReqs,setAddReqs]=useState("");
+  const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
+
   const setP=(k,f,v)=>setPhases(p=>({...p,[k]:{...p[k],[f]:v}}));
   const DEFS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"}];
-  const PHASE_DEF=[{key:"initial",label:"Initial attendance — assessment & inventory"},{key:"remediation",label:"Remediation of restorable items"},{key:"reinstate",label:"Reinstatement of contents"},{key:"final",label:"Final checks & confirmation"}];
+  const PHASE_DEF=[
+    {key:"initial",    label:"Initial attendance — assessment & inventory"},
+    {key:"remediation",label:"Remediation of restorable items"},
+    {key:"reinstate",  label:"Reinstatement of contents"},
+    {key:"final",      label:"Final checks & confirmation"},
+  ];
+  const CONS_STD=["Antimicrobial solution","Filters / bags","Microfibre cloths","Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)"];
+
   const go = async () => {
     setLoading(true);
-    const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "translate"  },
-      works:       { text: works || WORKS_TEMPLATES.contents, mode: "bullets" },
-      storageSize: { text: storageSize, mode: "translate"  },
-      addReqs:     { text: addReqs,     mode: "translate"  },
+    // Convert phases to old format for buildContents
+    const phasesForBuild = {};
+    PHASE_DEF.forEach(p => {
+      phasesForBuild[p.key] = {
+        techs: phases[p.key].active === "yes" ? phases[p.key].techs : 0,
+        hours: phases[p.key].active === "yes" ? phases[p.key].hours : 0,
+      };
     });
-    onResult(buildContents({areas:cleaned.areas,phases,equip,truckDays,storageSize:cleaned.storageSize,addReqs:cleaned.addReqs}, cleaned.works));
+    const cleaned = await cleanAll({
+      areas:       { text: areas,       mode: "translate" },
+      works:       { text: works || WORKS_TEMPLATES.contents, mode: "bullets" },
+      onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
+      storageSize: { text: storageSize, mode: "translate" },
+      consDetail:  { text: consDetail,  mode: "translate" },
+      addReqs:     { text: addReqs,     mode: "translate" },
+      siteNotes:   { text: siteNotes,   mode: "sitenotes" },
+    });
+    onResult(buildContents({
+      areas:cleaned.areas, phases:phasesForBuild, equip,
+      onsite, onsiteRoom:cleaned.onsiteRoom,
+      offsite, storageSize:cleaned.storageSize,
+      truck, truckDays,
+      specCons, consDetail:cleaned.consDetail,
+      addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+    }, cleaned.works));
     setLoading(false);
   };
+
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. entire property…"/></Sec>
-    <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe contents works…" rows={4} templateKey="contents"/></Sec>
+    {/* 1. Areas */}
+    <Sec number={1} title="Areas / Rooms Affected">
+      <TextField value={areas} onChange={setAreas} placeholder="e.g. entire property…"/>
+    </Sec>
+
+    {/* 2. Works Required */}
+    <Sec number={2} title="Works Required">
+      <TextField value={works} onChange={setWorks} placeholder="Describe contents works…" rows={4} templateKey="contents"/>
+    </Sec>
+
+    {/* 3. Labour by Phase */}
     <Sec number={3} title="Labour by Phase">
       {PHASE_DEF.map(p=>(
-        <div key={p.key} style={{marginBottom:16}}>
-          <span style={{...lbl,color:C.green,marginBottom:8}}>{p.label}</span>
-          <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-            <div><span style={lbl}>Technicians</span><Stepper value={phases[p.key].techs} onChange={v=>setP(p.key,"techs",v)} min={1}/></div>
-            <div><span style={lbl}>Hours</span><Stepper value={phases[p.key].hours} onChange={v=>setP(p.key,"hours",v)} min={1} max={200}/></div>
-          </div>
+        <div key={p.key} style={{marginBottom:18, paddingBottom:18, borderBottom:"1px solid "+C.border}}>
+          <span style={{...lbl, color:C.green, marginBottom:8}}>{p.label}</span>
+          <YesNo value={phases[p.key].active} onChange={v=>setP(p.key,"active",v)}/>
+          {phases[p.key].active==="yes"&&(
+            <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:12}}>
+              <div><span style={lbl}>Technicians</span><Stepper value={phases[p.key].techs} onChange={v=>setP(p.key,"techs",v)} min={1}/></div>
+              <div><span style={lbl}>Hours</span><Stepper value={phases[p.key].hours} onChange={v=>setP(p.key,"hours",v)} min={1} max={200}/></div>
+            </div>
+          )}
         </div>
       ))}
     </Sec>
-    <Sec number={4} title="Equipment"><EquipGrid defs={DEFS} values={equip} setValues={setEquip}/></Sec>
-    <Sec number={5} title="Truck & Storage">
-      <div style={{marginBottom:16}}><span style={lbl}>Truck — days required</span><Stepper value={truckDays} onChange={setTruckDays} min={0}/></div>
-      <span style={lbl}>Off-site storage capacity</span>
-      <TextField value={storageSize} onChange={setStorageSize} placeholder="e.g. ≈ 20 m², large unit, half carriage…" rows={1}/>
+
+    {/* 4. Relocation */}
+    <Sec number={4} title="Relocation">
+      <span style={lbl}>Contents relocated to another room on-site?</span>
+      <YesNo value={onsite} onChange={setOnsite}/>
+      {onsite==="yes"&&<div style={{marginTop:12,marginBottom:18}}>
+        <span style={lbl}>Which room?</span>
+        <TextField value={onsiteRoom} onChange={setOnsiteRoom} placeholder="e.g. garage, master bedroom, living area…" rows={1}/>
+      </div>}
+      <div style={{marginTop:16}}>
+        <span style={lbl}>Contents relocated to off-site storage?</span>
+        <YesNo value={offsite} onChange={setOffsite}/>
+        {offsite==="yes"&&<div style={{marginTop:12}}>
+          <span style={lbl}>Storage capacity required</span>
+          <TextField value={storageSize} onChange={setStorageSize} placeholder="e.g. ≈ 20 m², large unit, half carriage…" rows={1}/>
+        </div>}
+      </div>
     </Sec>
-    <Sec number={6} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+
+    {/* 5. Truck */}
+    <Sec number={5} title="Truck Required?">
+      <YesNo value={truck} onChange={setTruck}/>
+      {truck==="yes"&&<div style={{marginTop:12}}>
+        <span style={lbl}>Number of days</span>
+        <Stepper value={truckDays} onChange={setTruckDays} min={1}/>
+      </div>}
+    </Sec>
+
+    {/* 6. Equipment */}
+    <Sec number={6} title="Equipment">
+      <EquipGrid defs={DEFS} values={equip} setValues={setEquip}/>
+    </Sec>
+
+    {/* 7. Consumables */}
+    <Sec number={7} title="Consumables">
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+        {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
+      </div>
+      <span style={lbl}>Anything special beyond the standard kit?</span>
+      <YesNo value={specCons} onChange={setSpecCons}/>
+      {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra blankets, specialised packing…" rows={2}/></div>}
+    </Sec>
+
+    {/* 8. Additional Requirements */}
+    <Sec number={8} title="Additional Requirements">
+      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
+    </Sec>
+
+    {/* 9. Site Notes */}
+    <Sec number={9} title="Site Notes — Anything that could help attending technicians">
+      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. elevator access, fragile items, no parking on street…" rows={3}/>
+    </Sec>
+
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -838,11 +940,20 @@ function ContentsRelocationForm({ onResult }) {
       <EquipGrid defs={DEFS} values={equip} setValues={setEquip}/>
     </Sec>
 
-    <Sec number={8} title="Additional Requirements">
+    <Sec number={8} title="Consumables">
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+        <span style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)</span>
+      </div>
+      <span style={lbl}>Anything special beyond the standard kit?</span>
+      <YesNo value={specCons} onChange={setSpecCons}/>
+      {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra furniture blankets, specialised packing materials…" rows={2}/></div>}
+    </Sec>
+
+    <Sec number={9} title="Additional Requirements">
       <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
     </Sec>
 
-    <Sec number={9} title="Site Notes — Anything that could help attending technicians">
+    <Sec number={10} title="Site Notes — Anything that could help attending technicians">
       <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. elevator access required, high-rise building, fragile items, no parking on street…" rows={3}/>
     </Sec>
 
