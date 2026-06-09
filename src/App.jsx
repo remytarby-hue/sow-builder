@@ -25,7 +25,7 @@ const SOW_TYPES = [
 ];
 
 const WORKS_TEMPLATES = {
-  mould:            "Containment of the affected area.\nRemoval of the affected section of the ceiling/walls.\nHEPA vac + sanitation of all affected surfaces.\nInstallation of drying equipment.\nEncapsulation of timbers following drying.",
+  mould:            "Erection of containment to contain the work zone.\nEstablish negative air pressure using air filtration devices (AFDs).\nRemoval of the affected section of the [wall/ceiling].\nHEPA vac + sanitation of all affected surfaces.\nInstallation of drying equipment.\nEncapsulation of the affected building material as required.",
   contents:         "Assessment and inventory of the affected items.\nRemoval of affected items for disposal.\nPacking and relocation of restorable/non-affected items to off-site storage.\nHEPA vac + sanitation of restorable items.\nReinstatement of contents.",
   stripout:         "Strip out of walls in the affected areas up to 1200mm.\nRemoval of all affected insulation.",
   flooring:         "Removal of the affected floor covering.\nHEPA vac + sanitation of subfloor.\nInstallation of drying equipment.",
@@ -61,15 +61,42 @@ const LABOUR_FULL   = "\t• Labour carried out during initial attendance\n\t•
 const LABOUR_SHORT  = "\t• Labour carried out during initial attendance\n\t• Final checks and confirmation of completion";
 
 function buildMould(d, works) {
-  const cons = ["Antimicrobial solution","Plastic sheeting","PPE","Filters / bags","Microfibre cloths","Containment doors","Multi tools blade","Blade","Cloth tape/masking tape","Rags"];
+  // Trades block
+  const tradeLines = [];
+  if (d.builder)   tradeLines.push("Builder:\n\t- " + d.builder);
+  if (d.electrician) tradeLines.push("Electrician:\n\t- " + d.electrician);
+  if (d.plumber)   tradeLines.push("Plumber:\n\t- " + d.plumber);
+  if (d.otherTrade) tradeLines.push("Other:\n\t- " + d.otherTrade);
+  const tradesText = tradeLines.length ? tradeLines.join("\n") : "None";
+
+  // Equipment block — drying only if required
+  const equipDefs = [];
+  if (d.dryingRequired === "yes") {
+    equipDefs.push({key:"dehum", label:"Dehumidifiers"});
+    equipDefs.push({key:"mover", label:"Air Movers / Fans"});
+  }
+  equipDefs.push({key:"scrubber", label:"Air Scrubbers"});
+  equipDefs.push({key:"hepa",    label:"HEPA Vacuumed"});
+  equipDefs.push({key:"poles",   label:"Containment Poles"});
+
+  // Consumables
+  const cons = [
+    "Antimicrobial solution","Plastic sheeting","PPE","Filters / bags",
+    "Microfibre cloths","Containment doors","Multi tools blade","Blade",
+    "Cloth tape/masking tape","Rags","Zip doors","Floor protection",
+    "Percide","Mould/Stain Blocker Paint","Duct roll",
+  ];
   if (d.specCons === "yes" && d.consDetail) cons.push(d.consDetail);
+
   return [
     "SOW - Mould Remediation",
     "",
-    "Other trades required prior to commencement of works: " + (d.otherTrades === "yes" ? (d.tradesDetail || "To be confirmed") : "None"),
+    "Other trades required prior to commencement of works:",
+    d.otherTrades === "yes" ? tradesText : "None",
     "",
     "Room Name / Area: " + (d.areas || "To be confirmed"),
     "",
+    ...(d.siteNotes ? ["Site Notes:", tobullets(d.siteNotes), ""] : []),
     "\tWorks required:",
     tobullets(works),
     "",
@@ -83,7 +110,7 @@ function buildMould(d, works) {
     "\t• Technician hours: " + d.techs + " Technician" + (d.techs > 1 ? "s" : "") + " x " + d.hours + " hours",
     "",
     "Equipment Breakdown",
-    equipBlock([{key:"dehum",label:"Dehumidifiers"},{key:"scrubber",label:"Air Scrubbers"},{key:"mover",label:"Air Movers / Fans"},{key:"hepa",label:"HEPA Vacuumed"}], d.equip),
+    equipBlock(equipDefs, d.equip),
     "",
     "Consumables Breakdown",
     "List of consumables required.",
@@ -487,50 +514,137 @@ function GenBtn({ onClick, loading }) {
 
 // ── MOULD FORM ────────────────────────────────────────────────────────────────
 function MouldForm({ onResult }) {
-  const [areas,setAreas]=useState(""); const [otherTrades,setOtherTrades]=useState(null); const [tradesDetail,setTradesDetail]=useState("");
-  const [works,setWorks]=useState(""); const [techs,setTechs]=useState(2); const [hours,setHours]=useState(10);
-  const [equip,setEquip]=useState({ dehum:{qty:1,days:5}, scrubber:{qty:1,days:5}, mover:{qty:2,days:5}, hepa:{qty:1,days:1} });
-  const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState(""); const [addReqs,setAddReqs]=useState("");
+  const [areas,setAreas]=useState("");
+  const [otherTrades,setOtherTrades]=useState(null);
+  const [builder,setBuilder]=useState("");
+  const [electrician,setElectrician]=useState("");
+  const [plumber,setPlumber]=useState("");
+  const [otherTrade,setOtherTrade]=useState("");
+  const [works,setWorks]=useState("");
+  const [techs,setTechs]=useState(2);
+  const [hours,setHours]=useState(10);
+  const [dryingRequired,setDryingRequired]=useState(null);
+  const [equip,setEquip]=useState({ dehum:{qty:1,days:5}, mover:{qty:2,days:5}, scrubber:{qty:1,days:1}, hepa:{qty:1,days:1}, poles:{qty:4,days:1} });
+  const [specCons,setSpecCons]=useState(null);
+  const [consDetail,setConsDetail]=useState("");
+  const [addReqs,setAddReqs]=useState("");
+  const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
-  const DEFS=[{key:"dehum",label:"Dehumidifier"},{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"mover",label:"Air Mover / Fan"},{key:"hepa",label:"HEPA Vacuum"}];
-  const CONS_STD=["Antimicrobial solution","Plastic sheeting","PPE","Filters / bags","Microfibre cloths","Containment doors","Multi-tool blades","Cloth tape / masking tape","Rags"];
+
+  const DEFS_DRYING=[{key:"dehum",label:"Dehumidifier"},{key:"mover",label:"Air Mover / Fan"}];
+  const DEFS_ALWAYS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"},{key:"poles",label:"Containment Poles"}];
+
+  const CONS_STD=["Antimicrobial solution","Plastic sheeting","PPE","Filters / bags","Microfibre cloths","Containment doors","Multi-tool blades","Blade","Cloth tape / masking tape","Rags","Zip doors","Floor protection","Percide","Mould/Stain Blocker Paint","Duct roll"];
+
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:        { text: areas,        mode: "inline"  },
-      tradesDetail: { text: tradesDetail, mode: "trades"  },
-      works:        { text: works || WORKS_TEMPLATES.mould, mode: "bullets" },
-      consDetail:   { text: consDetail,   mode: "inline"  },
-      addReqs:      { text: addReqs,      mode: "inline"  },
+      areas:       { text: areas,       mode: "inline"  },
+      builder:     { text: builder,     mode: "trades"  },
+      electrician: { text: electrician, mode: "trades"  },
+      plumber:     { text: plumber,     mode: "trades"  },
+      otherTrade:  { text: otherTrade,  mode: "trades"  },
+      works:       { text: works || WORKS_TEMPLATES.mould, mode: "bullets" },
+      consDetail:  { text: consDetail,  mode: "inline"  },
+      addReqs:     { text: addReqs,     mode: "inline"  },
+      siteNotes:   { text: siteNotes,   mode: "bullets" },
     });
-    onResult(buildMould({areas:cleaned.areas,otherTrades,tradesDetail:cleaned.tradesDetail,techs,hours,equip,specCons,consDetail:cleaned.consDetail,addReqs:cleaned.addReqs}, cleaned.works));
+    onResult(buildMould({
+      areas:cleaned.areas, otherTrades,
+      builder:cleaned.builder, electrician:cleaned.electrician,
+      plumber:cleaned.plumber, otherTrade:cleaned.otherTrade,
+      techs, hours, dryingRequired, equip,
+      specCons, consDetail:cleaned.consDetail,
+      addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+    }, cleaned.works));
     setLoading(false);
   };
+
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. guest room, music room, hallway ceiling…"/></Sec>
+    {/* 1. Areas */}
+    <Sec number={1} title="Areas / Rooms Affected">
+      <TextField value={areas} onChange={setAreas} placeholder="e.g. kitchen, bedroom 1, hallway ceiling…"/>
+    </Sec>
+
+    {/* 2. Other Trades */}
     <Sec number={2} title="Other Trades Required">
       <span style={lbl}>Any trades needed before works begin?</span>
       <YesNo value={otherTrades} onChange={setOtherTrades}/>
-      {otherTrades==="yes"&&<div style={{marginTop:12}}><TextField value={tradesDetail} onChange={setTradesDetail} placeholder="e.g. Electrician to isolate power outlets…" rows={2}/></div>}
+      {otherTrades==="yes"&&(
+        <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:12}}>
+          <div>
+            <span style={lbl}>Builder</span>
+            <TextField value={builder} onChange={setBuilder} placeholder="e.g. Removal of kitchen cabinetry…" rows={2}/>
+          </div>
+          <div>
+            <span style={lbl}>Electrician</span>
+            <TextField value={electrician} onChange={setElectrician} placeholder="e.g. Isolation of power outlets…" rows={2}/>
+          </div>
+          <div>
+            <span style={lbl}>Plumber</span>
+            <TextField value={plumber} onChange={setPlumber} placeholder="e.g. Identify and rectify source of water ingress…" rows={2}/>
+          </div>
+          <div>
+            <span style={lbl}>Other trade (if needed)</span>
+            <TextField value={otherTrade} onChange={setOtherTrade} placeholder="e.g. Asbestos removalist, structural engineer…" rows={2}/>
+          </div>
+        </div>
+      )}
     </Sec>
-    <Sec number={3} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe what needs to be done — speak or type…" rows={4} templateKey="mould"/></Sec>
+
+    {/* 3. Works Required */}
+    <Sec number={3} title="Works Required">
+      <TextField value={works} onChange={setWorks} placeholder="Describe what needs to be done…" rows={5} templateKey="mould"/>
+    </Sec>
+
+    {/* 4. Labour */}
     <Sec number={4} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
         <div><span style={lbl}>Hours</span><Stepper value={hours} onChange={setHours} min={1} max={200}/></div>
       </div>
     </Sec>
-    <Sec number={5} title="Equipment"><EquipGrid defs={DEFS} values={equip} setValues={setEquip}/></Sec>
+
+    {/* 5. Equipment */}
+    <Sec number={5} title="Equipment">
+      <span style={lbl}>Drying equipment required?</span>
+      <YesNo value={dryingRequired} onChange={setDryingRequired}/>
+      {dryingRequired==="yes"&&(
+        <div style={{marginTop:14,marginBottom:14}}>
+          <EquipGrid defs={DEFS_DRYING} values={equip} setValues={setEquip}/>
+        </div>
+      )}
+      {dryingRequired&&(
+        <div style={{marginTop: dryingRequired==="yes" ? 0 : 14, paddingTop:14, borderTop:"1px solid "+C.border}}>
+          <span style={{...lbl,marginBottom:10}}>AFD, HEPA Vacuum & Containment Poles</span>
+          <EquipGrid defs={DEFS_ALWAYS} values={equip} setValues={setEquip}/>
+        </div>
+      )}
+    </Sec>
+
+    {/* 6. Consumables */}
     <Sec number={6} title="Consumables">
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+        {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
+      </div>
       <span style={lbl}>Anything special beyond the standard kit?</span>
       <YesNo value={specCons} onChange={setSpecCons}/>
-      {specCons==="yes"&&<div style={{marginTop:12}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. floor protection, containment poles…" rows={2}/></div>}
-      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:12}}>{CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}</div>
+      {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra sheeting, specialised PPE…" rows={2}/></div>}
     </Sec>
+
+    {/* 7. Additional Requirements */}
     <Sec number={7} title="Additional Requirements">
-      <TextField value={addReqs} onChange={setAddReqs} placeholder="e.g. skip bin, off-site storage, truck access…" rows={2}/>
-      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>{["Skip bin","Off-site storage","Truck access","Scaffolding","Pod / portable storage"].map(ex=><span key={ex} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px dashed "+C.border,borderRadius:5,padding:"3px 9px"}}>e.g. {ex}</span>)}</div>
+      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
+        {["Skip bin","Off-site storage","Truck"].map(ex=><span key={ex} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px dashed "+C.border,borderRadius:5,padding:"3px 9px"}}>e.g. {ex}</span>)}
+      </div>
     </Sec>
+
+    {/* 8. Site Notes */}
+    <Sec number={8} title="Site Notes — Anything that could help attending technicians">
+      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling — large ladder required, access via elevator, trolley needed, park on street only…" rows={3}/>
+    </Sec>
+
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
