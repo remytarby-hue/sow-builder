@@ -69,7 +69,10 @@ function buildMould(d, works) {
   if (d.otherTrade) tradeLines.push("Other:\n\t- " + d.otherTrade);
   const tradesText = tradeLines.length ? tradeLines.join("\n") : "None";
 
-  // Equipment block — drying only if required
+  // Labour lines depend on whether drying is required
+  const labourLines = d.dryingRequired === "yes"
+    ? LABOUR_FULL
+    : "\t• Labour carried out during initial attendance\n\t• Moisture readings and monitoring\n\t• Final checks and confirmation of completion";
   const equipDefs = [];
   if (d.dryingRequired === "yes") {
     equipDefs.push({key:"dehum", label:"Dehumidifiers"});
@@ -105,7 +108,7 @@ function buildMould(d, works) {
     "",
     "Labour Breakdown",
     "General summary of labour carried out onsite.",
-    LABOUR_FULL,
+    labourLines,
     "Total Labour Hours",
     "\t• Technician hours: " + d.techs + " Technician" + (d.techs > 1 ? "s" : "") + " x " + d.hours + " hours",
     "",
@@ -362,6 +365,7 @@ async function aiClean(text, mode = "inline") {
     bullets: context + "\n\nConvert the following technician notes into clean, professional bullet points suitable for a Scope of Work document. Use correct industry terminology. Output ONLY the bullet points, one per line, plain text, no dashes or asterisks. Fix spelling or transcription errors.\n\nNotes:\n" + text,
     inline:  context + "\n\nClean up the following field text: fix spelling, transcription errors, grammar, and translate to English if needed. Use correct industry terminology where appropriate. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
     trades:  context + "\n\nClean up the following trade requirement notes: fix spelling, transcription errors, grammar, and translate to English if needed. Keep professional and concise. Output ONLY the corrected text, nothing else.\n\nText:\n" + text,
+    sitenotes: context + "\n\nClean up the following site notes written by a technician. Fix spelling and transcription errors only. Keep every point exactly as written — do not add, remove, or interpret anything. Output each note as a separate line, plain text, no bullets or dashes.\n\nNotes:\n" + text,
   };
   try {
     const res = await fetch("/api/generate", {
@@ -409,12 +413,12 @@ function Stepper({ value, onChange, min = 0, max = 99 }) {
   return (
     <div style={{ display:"inline-flex", alignItems:"center", background:C.white, borderRadius:8, border:"1.5px solid "+C.border, overflow:"hidden" }}>
       <button onClick={() => onChange(Math.max(min, value - 1))}
-        style={{ width:38, height:38, background:"none", border:"none", borderRight:"1px solid "+C.border, color: value <= min ? C.border : C.green, fontSize:20, fontWeight:700, cursor: value <= min ? "default" : "pointer", lineHeight:1 }}>−</button>
+        style={{ width:40, height:40, background:"none", border:"none", borderRight:"1px solid "+C.border, color: value <= min ? C.border : C.green, fontSize:22, fontWeight:700, cursor: value <= min ? "default" : "pointer", lineHeight:1, flexShrink:0 }}>−</button>
       <input type="number" value={value}
         onChange={e => onChange(Math.max(min, Math.min(max, parseInt(e.target.value) || 0)))}
-        style={{ width:44, textAlign:"center", background:"none", border:"none", color:C.text, fontSize:16, fontWeight:700, fontFamily:"inherit", outline:"none" }} />
+        style={{ width:46, textAlign:"center", background:"none", border:"none", color:C.text, fontSize:16, fontWeight:700, fontFamily:"inherit", outline:"none", flexShrink:0 }} />
       <button onClick={() => onChange(Math.min(max, value + 1))}
-        style={{ width:38, height:38, background:"none", border:"none", borderLeft:"1px solid "+C.border, color:C.green, fontSize:20, fontWeight:700, cursor:"pointer", lineHeight:1 }}>+</button>
+        style={{ width:40, height:40, background:"none", border:"none", borderLeft:"1px solid "+C.border, color:C.green, fontSize:22, fontWeight:700, cursor:"pointer", lineHeight:1, flexShrink:0 }}>+</button>
     </div>
   );
 }
@@ -472,14 +476,14 @@ function EquipGrid({ defs, values, setValues }) {
 
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 90px 90px 28px", gap:"6px 12px", alignItems:"center", marginBottom:6 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 100px 100px 28px", gap:"6px 8px", alignItems:"center", marginBottom:4 }}>
         <span style={lbl}>Item</span>
         <span style={{ ...lbl, textAlign:"center" }}>Qty</span>
         <span style={{ ...lbl, textAlign:"center" }}>Days</span>
         <span/>
       </div>
       {allDefs.map(({ key, label, custom }) => (
-        <div key={key} style={{ display:"grid", gridTemplateColumns:"1fr 90px 90px 28px", gap:"6px 12px", alignItems:"center", marginBottom:10 }}>
+        <div key={key} style={{ display:"grid", gridTemplateColumns:"1fr 100px 100px 28px", gap:"6px 8px", alignItems:"center", marginBottom:10 }}>
           <span style={{ fontSize:13, color:C.text }}>{label}</span>
           <div style={{ display:"flex", justifyContent:"center" }}>
             <Stepper value={values[key]?.qty ?? 0} onChange={v => setE(key, "qty", v)} />
@@ -539,15 +543,15 @@ function MouldForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "inline"  },
-      builder:     { text: builder,     mode: "trades"  },
-      electrician: { text: electrician, mode: "trades"  },
-      plumber:     { text: plumber,     mode: "trades"  },
-      otherTrade:  { text: otherTrade,  mode: "trades"  },
+      areas:       { text: areas,       mode: "inline"    },
+      builder:     { text: builder,     mode: "trades"    },
+      electrician: { text: electrician, mode: "trades"    },
+      plumber:     { text: plumber,     mode: "trades"    },
+      otherTrade:  { text: otherTrade,  mode: "trades"    },
       works:       { text: works || WORKS_TEMPLATES.mould, mode: "bullets" },
-      consDetail:  { text: consDetail,  mode: "inline"  },
-      addReqs:     { text: addReqs,     mode: "inline"  },
-      siteNotes:   { text: siteNotes,   mode: "bullets" },
+      consDetail:  { text: consDetail,  mode: "inline"    },
+      addReqs:     { text: addReqs,     mode: "inline"    },
+      siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
     onResult(buildMould({
       areas:cleaned.areas, otherTrades,
@@ -610,16 +614,14 @@ function MouldForm({ onResult }) {
       <span style={lbl}>Drying equipment required?</span>
       <YesNo value={dryingRequired} onChange={setDryingRequired}/>
       {dryingRequired==="yes"&&(
-        <div style={{marginTop:14,marginBottom:14}}>
+        <div style={{marginTop:14, paddingBottom:14, borderBottom:"1px solid "+C.border}}>
           <EquipGrid defs={DEFS_DRYING} values={equip} setValues={setEquip}/>
         </div>
       )}
-      {dryingRequired&&(
-        <div style={{marginTop: dryingRequired==="yes" ? 0 : 14, paddingTop:14, borderTop:"1px solid "+C.border}}>
-          <span style={{...lbl,marginBottom:10}}>AFD, HEPA Vacuum & Containment Poles</span>
-          <EquipGrid defs={DEFS_ALWAYS} values={equip} setValues={setEquip}/>
-        </div>
-      )}
+      <div style={{marginTop:14}}>
+        <span style={{...lbl, marginBottom:10}}>AFD, HEPA Vacuum & Containment Poles</span>
+        <EquipGrid defs={DEFS_ALWAYS} values={equip} setValues={setEquip}/>
+      </div>
     </Sec>
 
     {/* 6. Consumables */}
