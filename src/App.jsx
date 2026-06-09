@@ -200,6 +200,7 @@ function buildContentsRelocation(d, works) {
     "Consumables Breakdown",
     "List of consumables required.",
     "\t• Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)",
+    ...(d.specCons === "yes" && d.consDetail ? ["\t• " + d.consDetail] : []),
     ...(d.truck === "yes" ? ["", "Truck required: Yes\n\t• Number of days: " + (d.truckDays || "To be confirmed")] : []),
     ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
     ...(d.siteNotes ? ["", "Site Notes:", tobullets(d.siteNotes)] : []),
@@ -753,6 +754,7 @@ function ContentsRelocationForm({ onResult }) {
   const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
   const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
   const [equip,setEquip]=useState({trolley:{qty:1,days:1},straps:{qty:1,days:1}});
+  const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
   const [addReqs,setAddReqs]=useState("");
   const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
@@ -766,6 +768,7 @@ function ContentsRelocationForm({ onResult }) {
       onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
       storageSize: { text: storageSize, mode: "translate" },
       addReqs:     { text: addReqs,     mode: "translate" },
+      consDetail:  { text: consDetail,  mode: "translate" },
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
     onResult(buildContentsRelocation({
@@ -773,6 +776,7 @@ function ContentsRelocationForm({ onResult }) {
       onsite, onsiteRoom:cleaned.onsiteRoom,
       offsite, storageSize:cleaned.storageSize,
       truck, truckDays, equip,
+      specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
     }, cleaned.works));
     setLoading(false);
