@@ -15,18 +15,19 @@ const C = {
 };
 
 const SOW_TYPES = [
-  { id:"mould",       label:"Mould Remediation",    icon:"🍄" },
-  { id:"contents",    label:"Contents",              icon:"📦" },
-  { id:"stripout",    label:"Strip Out",             icon:"🔨" },
-  { id:"flooring",    label:"Flooring Removal",      icon:"🪵" },
-  { id:"flood",       label:"Flood Remediation",     icon:"💧" },
-  { id:"restoration", label:"Restoration Cleaning",  icon:"✨" },
-  { id:"drying",      label:"Drying",                icon:"💨" },
+  { id:"mould",              label:"Mould Remediation",      icon:"🍄" },
+  { id:"contents",           label:"Contents",               icon:"📦" },
+  { id:"contents_relocation",label:"Contents Relocation",    icon:"🚚" },
+  { id:"stripout",           label:"Strip Out",              icon:"🔨" },
+  { id:"flooring",           label:"Flooring Removal",       icon:"🪵" },
+  { id:"flood",              label:"Flood Remediation",      icon:"💧" },
+  { id:"restoration",        label:"Restoration Cleaning",   icon:"✨" },
+  { id:"drying",             label:"Drying",                 icon:"💨" },
 ];
 
 const WORKS_TEMPLATES = {
   mould:            "Erection of containment to contain the work zone.\nEstablish negative air pressure using air filtration devices (AFDs).\nRemoval of the affected section of the [wall/ceiling].\nHEPA vac + sanitation of all affected surfaces.\nInstallation of drying equipment.\nEncapsulation of the affected building material as required.",
-  contents:         "Assessment and inventory of the affected items.\nRemoval of affected items for disposal.\nPacking and relocation of restorable/non-affected items to off-site storage.\nHEPA vac + sanitation of restorable items.\nReinstatement of contents.",
+  contents_relocation: "Packing and relocation of contents.\nReinstatement of contents.",
   stripout:         "Strip out of walls in the affected areas up to 1200mm.\nRemoval of all affected insulation.",
   flooring:         "Removal of the affected floor covering.\nHEPA vac + sanitation of subfloor.\nInstallation of drying equipment.",
   flood_contents:   "All contents to be relocated.\nSome items may require cleaning during the relocation process.\nIf an inventory is required, one full day will be allowed to complete it.\nA large storage unit is recommended to allow adequate space for storage and handling.",
@@ -159,7 +160,53 @@ function buildContents(d, works) {
   ].join("\n");
 }
 
-function buildStripout(d, works) {
+function buildContentsRelocation(d, works) {
+  const labourLines = [];
+  if (d.techsInitial > 0 && d.hoursInitial > 0)
+    labourLines.push("\t• Initial attendance — packing & relocation: " + d.techsInitial + " Technician" + (d.techsInitial > 1 ? "s" : "") + " x " + d.hoursInitial + " hours");
+  if (d.techsReinstate > 0 && d.hoursReinstate > 0)
+    labourLines.push("\t• Reinstatement of contents: " + d.techsReinstate + " Technician" + (d.techsReinstate > 1 ? "s" : "") + " x " + d.hoursReinstate + " hours");
+
+  const locationLines = [];
+  if (d.onsite === "yes" && d.onsiteRoom) locationLines.push("\t• On-site relocation to: " + d.onsiteRoom);
+  if (d.offsite === "yes" && d.storageSize) locationLines.push("\t• Off-site storage capacity required: " + d.storageSize);
+  else if (d.offsite === "yes") locationLines.push("\t• Off-site storage required — capacity to be confirmed");
+
+  const equipDefs = [
+    {key:"truck",   label:"Truck"},
+    {key:"trolley", label:"Trolley / Hand Trolley"},
+    {key:"straps",  label:"Lifting Straps"},
+  ];
+
+  return [
+    "SOW - Contents Relocation",
+    "",
+    "Room Name / Area: " + (d.areas || "Entire property"),
+    "",
+    "\tWorks required:",
+    tobullets(works),
+    "",
+    ...(locationLines.length ? ["Relocation Details:", locationLines.join("\n"), ""] : []),
+    "General Scope of Works",
+    "\t• Transport of waste to approved disposal facility\n\t• Cleaning and sanitising of tools and equipment after works\n\t• Compile report of findings and works carried out for each attendance",
+    "",
+    "Labour Breakdown",
+    "General summary of labour carried out onsite.",
+    labourLines.join("\n") || "\t• Labour carried out during initial attendance",
+    "",
+    "Equipment Breakdown",
+    equipBlock(equipDefs, d.equip),
+    "",
+    "Consumables Breakdown",
+    "List of consumables required.",
+    "\t• Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)",
+    ...(d.truck === "yes" ? ["", "Truck required: Yes\n\t• Number of days: " + (d.truckDays || "To be confirmed")] : []),
+    ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
+    ...(d.siteNotes ? ["", "Site Notes:", tobullets(d.siteNotes)] : []),
+  ].join("\n");
+}
+
+
   const trades = [];
   if (d.elec)    trades.push("Electrician\n" + d.elec);
   if (d.plumb)   trades.push("Plumber\n" + d.plumb);
@@ -696,6 +743,109 @@ function ContentsForm({ onResult }) {
   </div>);
 }
 
+// ── CONTENTS RELOCATION FORM ──────────────────────────────────────────────────
+function ContentsRelocationForm({ onResult }) {
+  const [areas,setAreas]=useState("");
+  const [works,setWorks]=useState("");
+  const [techsInitial,setTechsInitial]=useState(3); const [hoursInitial,setHoursInitial]=useState(20);
+  const [techsReinstate,setTechsReinstate]=useState(3); const [hoursReinstate,setHoursReinstate]=useState(8);
+  const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
+  const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
+  const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
+  const [equip,setEquip]=useState({truck:{qty:1,days:1},trolley:{qty:1,days:1},straps:{qty:1,days:1}});
+  const [addReqs,setAddReqs]=useState("");
+  const [siteNotes,setSiteNotes]=useState("");
+  const [loading,setLoading]=useState(false);
+  const DEFS=[{key:"truck",label:"Truck"},{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}];
+
+  const go = async () => {
+    setLoading(true);
+    const cleaned = await cleanAll({
+      areas:       { text: areas,       mode: "translate" },
+      works:       { text: works || WORKS_TEMPLATES.contents_relocation, mode: "bullets" },
+      onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
+      storageSize: { text: storageSize, mode: "translate" },
+      addReqs:     { text: addReqs,     mode: "translate" },
+      siteNotes:   { text: siteNotes,   mode: "sitenotes" },
+    });
+    onResult(buildContentsRelocation({
+      areas:cleaned.areas, techsInitial, hoursInitial, techsReinstate, hoursReinstate,
+      onsite, onsiteRoom:cleaned.onsiteRoom,
+      offsite, storageSize:cleaned.storageSize,
+      truck, truckDays, equip,
+      addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+    }, cleaned.works));
+    setLoading(false);
+  };
+
+  return (<div>
+    <Sec number={1} title="Areas / Rooms Affected">
+      <TextField value={areas} onChange={setAreas} placeholder="e.g. entire property, ground floor…"/>
+    </Sec>
+
+    <Sec number={2} title="Works Required">
+      <TextField value={works} onChange={setWorks} placeholder="Describe what needs to be relocated and how…" rows={3} templateKey="contents_relocation"/>
+    </Sec>
+
+    <Sec number={3} title="Labour">
+      <div style={{marginBottom:16}}>
+        <span style={{...lbl,color:C.green,marginBottom:8}}>Initial attendance — packing & relocation</span>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+          <div><span style={lbl}>Technicians</span><Stepper value={techsInitial} onChange={setTechsInitial} min={0}/></div>
+          <div><span style={lbl}>Hours</span><Stepper value={hoursInitial} onChange={setHoursInitial} min={0} max={200}/></div>
+        </div>
+      </div>
+      <div>
+        <span style={{...lbl,color:C.green,marginBottom:8}}>Reinstatement of contents</span>
+        <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+          <div><span style={lbl}>Technicians</span><Stepper value={techsReinstate} onChange={setTechsReinstate} min={0}/></div>
+          <div><span style={lbl}>Hours</span><Stepper value={hoursReinstate} onChange={setHoursReinstate} min={0} max={200}/></div>
+        </div>
+      </div>
+    </Sec>
+
+    <Sec number={4} title="On-Site Relocation?">
+      <span style={lbl}>Will contents be relocated to another room on-site?</span>
+      <YesNo value={onsite} onChange={setOnsite}/>
+      {onsite==="yes"&&<div style={{marginTop:12}}>
+        <span style={lbl}>Which room?</span>
+        <TextField value={onsiteRoom} onChange={setOnsiteRoom} placeholder="e.g. garage, master bedroom, living area…" rows={1}/>
+      </div>}
+    </Sec>
+
+    <Sec number={5} title="Off-Site Storage?">
+      <span style={lbl}>Will contents be relocated to off-site storage?</span>
+      <YesNo value={offsite} onChange={setOffsite}/>
+      {offsite==="yes"&&<div style={{marginTop:12}}>
+        <span style={lbl}>Storage capacity required</span>
+        <TextField value={storageSize} onChange={setStorageSize} placeholder="e.g. ≈ 20 m², large unit, half carriage…" rows={1}/>
+      </div>}
+    </Sec>
+
+    <Sec number={6} title="Truck Required?">
+      <YesNo value={truck} onChange={setTruck}/>
+      {truck==="yes"&&<div style={{marginTop:12}}>
+        <span style={lbl}>Number of days</span>
+        <Stepper value={truckDays} onChange={setTruckDays} min={1}/>
+      </div>}
+    </Sec>
+
+    <Sec number={7} title="Equipment">
+      <EquipGrid defs={DEFS} values={equip} setValues={setEquip}/>
+    </Sec>
+
+    <Sec number={8} title="Additional Requirements">
+      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
+    </Sec>
+
+    <Sec number={9} title="Site Notes — Anything that could help attending technicians">
+      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. elevator access required, high-rise building, fragile items, no parking on street…" rows={3}/>
+    </Sec>
+
+    <GenBtn onClick={go} loading={loading}/>
+  </div>);
+}
+
 // ── STRIP OUT FORM ────────────────────────────────────────────────────────────
 function StripOutForm({ onResult }) {
   const [areas,setAreas]=useState(""); const [elec,setElec]=useState(""); const [plumb,setPlumb]=useState(""); const [builder,setBuilder]=useState(""); const [other,setOther]=useState("");
@@ -928,13 +1078,14 @@ export default function App() {
   const reset = () => { setScreen("home"); setType(null); setResult(""); };
 
   const FORMS = {
-    mould:       <MouldForm       onResult={handleResult}/>,
-    contents:    <ContentsForm    onResult={handleResult}/>,
-    stripout:    <StripOutForm    onResult={handleResult}/>,
-    flooring:    <FlooringForm    onResult={handleResult}/>,
-    flood:       <FloodForm       onResult={handleResult}/>,
-    restoration: <RestorationForm onResult={handleResult}/>,
-    drying:      <DryingForm      onResult={handleResult}/>,
+    mould:               <MouldForm              onResult={handleResult}/>,
+    contents:            <ContentsForm           onResult={handleResult}/>,
+    contents_relocation: <ContentsRelocationForm onResult={handleResult}/>,
+    stripout:            <StripOutForm           onResult={handleResult}/>,
+    flooring:            <FlooringForm           onResult={handleResult}/>,
+    flood:               <FloodForm              onResult={handleResult}/>,
+    restoration:         <RestorationForm        onResult={handleResult}/>,
+    drying:              <DryingForm             onResult={handleResult}/>,
   };
 
   return (
