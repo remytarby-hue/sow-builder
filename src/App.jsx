@@ -188,14 +188,14 @@ function buildContentsRelocation(d, works) {
     "",
     ...(locationLines.length ? ["Relocation Details:", locationLines.join("\n"), ""] : []),
     "General Scope of Works",
-    "\t• Transport of waste to approved disposal facility\n\t• Cleaning and sanitising of tools and equipment after works\n\t• Compile report of findings and works carried out for each attendance",
+    "\t• Cleaning and sanitising of tools and equipment after works\n\t• Compile report of findings and works carried out for each attendance",
     "",
     "Labour Breakdown",
     "General summary of labour carried out onsite.",
     labourLines.join("\n") || "\t• Labour carried out during initial attendance",
     "",
     "Equipment Breakdown",
-    equipBlock(equipDefs, d.equip),
+    equipBlock([{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}], d.equip),
     "",
     "Consumables Breakdown",
     "List of consumables required.",
@@ -752,11 +752,11 @@ function ContentsRelocationForm({ onResult }) {
   const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
   const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
   const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
-  const [equip,setEquip]=useState({truck:{qty:1,days:1},trolley:{qty:1,days:1},straps:{qty:1,days:1}});
+  const [equip,setEquip]=useState({trolley:{qty:1,days:1},straps:{qty:1,days:1}});
   const [addReqs,setAddReqs]=useState("");
   const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
-  const DEFS=[{key:"truck",label:"Truck"},{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}];
+  const DEFS=[{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}];
 
   const go = async () => {
     setLoading(true);
