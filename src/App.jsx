@@ -127,6 +127,7 @@ function buildMould(d, works) {
 function buildContents(d, works) {
   const phases = [
     {key:"initial",    label:"Labour carried out during initial attendance"},
+    {key:"packing",    label:"Packing / Relocation of contents"},
     {key:"remediation",label:"Remediation of restorable items"},
     {key:"reinstate",  label:"Reinstatement of contents"},
     {key:"final",      label:"Final checks and confirmation of completion"},
@@ -744,6 +745,7 @@ function ContentsForm({ onResult }) {
   const [areas,setAreas]=useState(""); const [works,setWorks]=useState("");
   const [phases,setPhases]=useState({
     initial:    {active:null, techs:3, hours:20},
+    packing:    {active:null, techs:3, hours:8},
     remediation:{active:null, techs:2, hours:8},
     reinstate:  {active:null, techs:3, hours:8},
     final:      {active:null, techs:1, hours:2},
@@ -761,6 +763,7 @@ function ContentsForm({ onResult }) {
   const DEFS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"}];
   const PHASE_DEF=[
     {key:"initial",    label:"Initial attendance — assessment & inventory"},
+    {key:"packing",    label:"Packing / Relocation of contents"},
     {key:"remediation",label:"Remediation of restorable items"},
     {key:"reinstate",  label:"Reinstatement of contents"},
     {key:"final",      label:"Final checks & confirmation"},
