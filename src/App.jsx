@@ -63,12 +63,12 @@ const LABOUR_FULL   = "\t• Labour carried out during initial attendance\n\t•
 const LABOUR_SHORT  = "\t• Labour carried out during initial attendance\n\t• Final checks and confirmation of completion";
 
 function buildMould(d, works) {
-  // Trades block
+  // Trades block — only trades marked Yes
   const tradeLines = [];
-  if (d.builder)   tradeLines.push("Builder:\n\t- " + d.builder);
-  if (d.electrician) tradeLines.push("Electrician:\n\t- " + d.electrician);
-  if (d.plumber)   tradeLines.push("Plumber:\n\t- " + d.plumber);
-  if (d.otherTrade) tradeLines.push("Other:\n\t- " + d.otherTrade);
+  if (d.builderActive === "yes" && d.builder)       tradeLines.push("Builder:\n\t- " + d.builder);
+  if (d.elecActive === "yes" && d.electrician)      tradeLines.push("Electrician:\n\t- " + d.electrician);
+  if (d.plumbActive === "yes" && d.plumber)         tradeLines.push("Plumber:\n\t- " + d.plumber);
+  if (d.otherTradeActive === "yes" && d.otherTrade) tradeLines.push("Other:\n\t- " + d.otherTrade);
   const tradesText = tradeLines.length ? tradeLines.join("\n") : "None";
 
   // Labour lines depend on whether drying is required
@@ -128,6 +128,8 @@ function buildContents(d, works) {
   const phases = [
     {key:"initial",    label:"Labour carried out during initial attendance"},
     {key:"packing",    label:"Packing / Relocation of contents"},
+    {key:"disposal",   label:"Disposal of non-restorable items"},
+    {key:"flooring",   label:"Removal of floor covering"},
     {key:"remediation",label:"Remediation of restorable items"},
     {key:"reinstate",  label:"Reinstatement of contents"},
     {key:"final",      label:"Final checks and confirmation of completion"},
@@ -392,11 +394,14 @@ function buildFlood(d, works) {
 function toButtons(t) { return tobullets(t); }
 
 function buildRestoration(d, works) {
+  const cons = ["PPE","Filters / bags","Cloth tape/masking tape","Rubbish bags","Antimicrobial","Odorx"];
+  if (d.specCons === "yes" && d.consDetail) cons.push(d.consDetail);
   return [
     "SOW - Restoration Cleaning",
     "",
     "Room Name / Area: " + (d.areas || "To be confirmed"),
     "",
+    ...(d.siteNotes ? ["Site Notes:", tobullets(d.siteNotes), ""] : []),
     "\tWorks required:",
     toButtons(works),
     "",
@@ -414,17 +419,21 @@ function buildRestoration(d, works) {
     "",
     "Consumables Breakdown",
     "List of consumables required.",
-    "\t• PPE\n\t• Filters / bags\n\t• Cloth tape/masking tape\n\t• Rubbish bags\n\t• Antimicrobial\n\t• Odorx",
+    cons.map(c => "\t• " + c).join("\n"),
+    ...(d.truck === "yes" ? ["", "Truck required for " + d.truckDays + " day" + (d.truckDays > 1 ? "s" : "") + "."] : []),
     ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
   ].join("\n");
 }
 
 function buildDrying(d, works) {
+  const cons = ["Antimicrobial solution","PPE","Filters / bags","Microfibre cloths","Rags"];
+  if (d.specCons === "yes" && d.consDetail) cons.push(d.consDetail);
   return [
     "SOW - Drying",
     "",
     "Room Name / Area: " + (d.areas || "To be confirmed"),
     "",
+    ...(d.siteNotes ? ["Site Notes:", tobullets(d.siteNotes), ""] : []),
     "\tWorks required:",
     toButtons(works),
     "",
@@ -442,7 +451,7 @@ function buildDrying(d, works) {
     "",
     "Consumables Breakdown",
     "List of consumables required.",
-    "\t• Antimicrobial solution\n\t• PPE\n\t• Filters / bags\n\t• Microfibre cloths\n\t• Rags",
+    cons.map(c => "\t• " + c).join("\n"),
     ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
   ].join("\n");
 }
@@ -609,10 +618,10 @@ function GenBtn({ onClick, loading }) {
 function MouldForm({ onResult }) {
   const [areas,setAreas]=useState("");
   const [otherTrades,setOtherTrades]=useState(null);
-  const [builder,setBuilder]=useState("");
-  const [electrician,setElectrician]=useState("");
-  const [plumber,setPlumber]=useState("");
-  const [otherTrade,setOtherTrade]=useState("");
+  const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
+  const [elecActive,setElecActive]=useState(null); const [electrician,setElectrician]=useState("");
+  const [plumbActive,setPlumbActive]=useState(null); const [plumber,setPlumber]=useState("");
+  const [otherTradeActive,setOtherTradeActive]=useState(null); const [otherTrade,setOtherTrade]=useState("");
   const [works,setWorks]=useState("");
   const [techs,setTechs]=useState(2);
   const [hours,setHours]=useState(10);
@@ -644,8 +653,10 @@ function MouldForm({ onResult }) {
     });
     onResult(buildMould({
       areas:cleaned.areas, otherTrades,
-      builder:cleaned.builder, electrician:cleaned.electrician,
-      plumber:cleaned.plumber, otherTrade:cleaned.otherTrade,
+      builderActive, builder:cleaned.builder,
+      elecActive, electrician:cleaned.electrician,
+      plumbActive, plumber:cleaned.plumber,
+      otherTradeActive, otherTrade:cleaned.otherTrade,
       techs, hours, dryingRequired, equip,
       specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
@@ -664,23 +675,18 @@ function MouldForm({ onResult }) {
       <span style={lbl}>Any trades needed before works begin?</span>
       <YesNo value={otherTrades} onChange={setOtherTrades}/>
       {otherTrades==="yes"&&(
-        <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:12}}>
-          <div>
-            <span style={lbl}>Builder</span>
-            <TextField value={builder} onChange={setBuilder} placeholder="e.g. Removal of kitchen cabinetry…" rows={2}/>
-          </div>
-          <div>
-            <span style={lbl}>Electrician</span>
-            <TextField value={electrician} onChange={setElectrician} placeholder="e.g. Isolation of power outlets…" rows={2}/>
-          </div>
-          <div>
-            <span style={lbl}>Plumber</span>
-            <TextField value={plumber} onChange={setPlumber} placeholder="e.g. Identify and rectify source of water ingress…" rows={2}/>
-          </div>
-          <div>
-            <span style={lbl}>Other trade (if needed)</span>
-            <TextField value={otherTrade} onChange={setOtherTrade} placeholder="e.g. Asbestos removalist, structural engineer…" rows={2}/>
-          </div>
+        <div style={{marginTop:16}}>
+          {[{label:"Builder",active:builderActive,setActive:setBuilderActive,val:builder,setVal:setBuilder,ph:"e.g. Removal of kitchen cabinetry…"},
+            {label:"Electrician",active:elecActive,setActive:setElecActive,val:electrician,setVal:setElectrician,ph:"e.g. Isolation of power outlets…"},
+            {label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumber,setVal:setPlumber,ph:"e.g. Identify and rectify source of water ingress…"},
+            {label:"Other trade",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist, structural engineer…"},
+          ].map(t=>(
+            <div key={t.label} style={{marginBottom:14, paddingBottom:14, borderBottom:"1px solid "+C.border}}>
+              <span style={{...lbl,color:C.green,marginBottom:6}}>{t.label}</span>
+              <YesNo value={t.active} onChange={t.setActive}/>
+              {t.active==="yes"&&<div style={{marginTop:10}}><TextField value={t.val} onChange={t.setVal} placeholder={t.ph} rows={2}/></div>}
+            </div>
+          ))}
         </div>
       )}
     </Sec>
@@ -746,6 +752,8 @@ function ContentsForm({ onResult }) {
   const [phases,setPhases]=useState({
     initial:    {active:null, techs:3, hours:20},
     packing:    {active:null, techs:3, hours:8},
+    disposal:   {active:null, techs:2, hours:8},
+    flooring:   {active:null, techs:2, hours:8},
     remediation:{active:null, techs:2, hours:8},
     reinstate:  {active:null, techs:3, hours:8},
     final:      {active:null, techs:1, hours:2},
@@ -764,6 +772,8 @@ function ContentsForm({ onResult }) {
   const PHASE_DEF=[
     {key:"initial",    label:"Initial attendance — assessment & inventory"},
     {key:"packing",    label:"Packing / Relocation of contents"},
+    {key:"disposal",   label:"Disposal of non-restorable items"},
+    {key:"flooring",   label:"Removal of floor covering"},
     {key:"remediation",label:"Remediation of restorable items"},
     {key:"reinstate",  label:"Reinstatement of contents"},
     {key:"final",      label:"Final checks & confirmation"},
@@ -1439,19 +1449,32 @@ function FloodForm({ onResult }) {
 function RestorationForm({ onResult }) {
   const [areas,setAreas]=useState(""); const [works,setWorks]=useState("");
   const [techs,setTechs]=useState(2); const [hours,setHours]=useState(5);
-  const [equip,setEquip]=useState({scrubber:{qty:2,days:1},hepa:{qty:1,days:1},fogging:{qty:0,days:1}}); const [addReqs,setAddReqs]=useState("");
+  const [equip,setEquip]=useState({scrubber:{qty:2,days:1},hepa:{qty:1,days:1},fogging:{qty:0,days:1}});
+  const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
+  const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
+  const [addReqs,setAddReqs]=useState("");
+  const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
   const DEFS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"hepa",label:"HEPA Vacuum"},{key:"fogging",label:"Fogging Machine"}];
+  const CONS_STD=["PPE","Filters / bags","Cloth tape/masking tape","Rubbish bags","Antimicrobial","Odorx"];
+
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:   { text: areas,   mode: "translate"  },
-      works:   { text: works || WORKS_TEMPLATES.restoration, mode: "bullets" },
-      addReqs: { text: addReqs, mode: "translate"  },
+      areas:      { text: areas,      mode: "translate" },
+      works:      { text: works || WORKS_TEMPLATES.restoration, mode: "bullets" },
+      consDetail: { text: consDetail, mode: "translate" },
+      addReqs:    { text: addReqs,    mode: "translate" },
+      siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
-    onResult(buildRestoration({areas:cleaned.areas,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
+    onResult(buildRestoration({
+      areas:cleaned.areas, techs, hours, equip,
+      truck, truckDays, specCons, consDetail:cleaned.consDetail,
+      addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+    }, cleaned.works));
     setLoading(false);
   };
+
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. master bedroom, bedroom 2, closet…"/></Sec>
     <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe restoration cleaning works…" rows={4} templateKey="restoration"/></Sec>
@@ -1462,7 +1485,25 @@ function RestorationForm({ onResult }) {
       </div>
     </Sec>
     <Sec number={4} title="Equipment"><EquipGrid defs={DEFS} values={equip} setValues={setEquip}/></Sec>
-    <Sec number={5} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={5} title="Truck Required?">
+      <YesNo value={truck} onChange={setTruck}/>
+      {truck==="yes"&&<div style={{marginTop:12}}>
+        <span style={lbl}>Number of days</span>
+        <Stepper value={truckDays} onChange={setTruckDays} min={1}/>
+      </div>}
+    </Sec>
+    <Sec number={6} title="Consumables">
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+        {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
+      </div>
+      <span style={lbl}>Anything special beyond the standard kit?</span>
+      <YesNo value={specCons} onChange={setSpecCons}/>
+      {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra Odorx, specialised cleaning products…" rows={2}/></div>}
+    </Sec>
+    <Sec number={7} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={8} title="Site Notes — Anything that could help attending technicians">
+      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. strong odour on site, high ceiling, elevator access…" rows={3}/>
+    </Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -1471,19 +1512,31 @@ function RestorationForm({ onResult }) {
 function DryingForm({ onResult }) {
   const [areas,setAreas]=useState(""); const [works,setWorks]=useState("");
   const [techs,setTechs]=useState(1); const [hours,setHours]=useState(5);
-  const [equip,setEquip]=useState({dehum:{qty:1,days:5},mover:{qty:3,days:5}}); const [addReqs,setAddReqs]=useState("");
+  const [equip,setEquip]=useState({dehum:{qty:1,days:5},mover:{qty:3,days:5}});
+  const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
+  const [addReqs,setAddReqs]=useState("");
+  const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
   const DEFS=[{key:"dehum",label:"Dehumidifier"},{key:"mover",label:"Air Mover / Fan"}];
+  const CONS_STD=["Antimicrobial solution","PPE","Filters / bags","Microfibre cloths","Rags"];
+
   const go = async () => {
     setLoading(true);
     const cleaned = await cleanAll({
-      areas:   { text: areas,   mode: "translate"  },
-      works:   { text: works || WORKS_TEMPLATES.drying, mode: "bullets" },
-      addReqs: { text: addReqs, mode: "translate"  },
+      areas:      { text: areas,      mode: "translate" },
+      works:      { text: works || WORKS_TEMPLATES.drying, mode: "bullets" },
+      consDetail: { text: consDetail, mode: "translate" },
+      addReqs:    { text: addReqs,    mode: "translate" },
+      siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
-    onResult(buildDrying({areas:cleaned.areas,techs,hours,equip,addReqs:cleaned.addReqs}, cleaned.works));
+    onResult(buildDrying({
+      areas:cleaned.areas, techs, hours, equip,
+      specCons, consDetail:cleaned.consDetail,
+      addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+    }, cleaned.works));
     setLoading(false);
   };
+
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. main bedroom, bedroom 2, hallway…"/></Sec>
     <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe drying works…" rows={3} templateKey="drying"/></Sec>
@@ -1494,7 +1547,18 @@ function DryingForm({ onResult }) {
       </div>
     </Sec>
     <Sec number={4} title="Equipment"><EquipGrid defs={DEFS} values={equip} setValues={setEquip}/></Sec>
-    <Sec number={5} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={5} title="Consumables">
+      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
+        {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
+      </div>
+      <span style={lbl}>Anything special beyond the standard kit?</span>
+      <YesNo value={specCons} onChange={setSpecCons}/>
+      {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra filters, floor protection…" rows={2}/></div>}
+    </Sec>
+    <Sec number={6} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={7} title="Site Notes — Anything that could help attending technicians">
+      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. equipment access, power availability, key location…" rows={3}/>
+    </Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
 }
@@ -1505,11 +1569,13 @@ export default function App() {
   const [type,setType]=useState(null);
   const [result,setResult]=useState("");
   const [copied,setCopied]=useState(false);
+  const [formKey,setFormKey]=useState(0);
 
   const cur = SOW_TYPES.find(t => t.id === type);
-  const handleResult = doc => { setResult(doc); setScreen("result"); };
+  const handleResult = doc => { setResult(doc); setScreen("result"); window.scrollTo(0,0); };
   const copy = () => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(()=>setCopied(false),2500); };
-  const reset = () => { setScreen("home"); setType(null); setResult(""); };
+  const reset = () => { setScreen("home"); setType(null); setResult(""); setFormKey(k=>k+1); };
+  const backToEdit = () => { setScreen("form"); };
 
   const FORMS = {
     mould:               <MouldForm              onResult={handleResult}/>,
@@ -1536,7 +1602,7 @@ export default function App() {
       {/* HEADER */}
       <div style={{background:C.white,borderBottom:"2px solid "+C.green,padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10,boxShadow:"0 2px 8px rgba(90,154,58,0.08)"}}>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {screen!=="home"&&<button onClick={reset} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>}
+          {screen!=="home"&&<button onClick={screen==="result"?backToEdit:reset} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>}
           <div>
             <div style={{fontSize:10,color:C.green,fontWeight:800,letterSpacing:2,textTransform:"uppercase"}}>Major Industries</div>
             <div style={{fontSize:17,fontWeight:700,color:C.text}}>{screen==="home"?"SOW Builder":cur?cur.icon+" "+cur.label:"SOW Builder"}</div>
@@ -1566,15 +1632,20 @@ export default function App() {
           </div>
         )}
 
-        {/* FORM */}
-        {screen==="form"&&<div style={{animation:"fadein 0.3s ease"}}>{FORMS[type]}</div>}
+        {/* FORM — stays mounted on result screen so data survives Edit */}
+        {(screen==="form"||screen==="result")&&type&&(
+          <div key={formKey} style={{animation:"fadein 0.3s ease", display:screen==="form"?"block":"none"}}>{FORMS[type]}</div>
+        )}
 
         {/* RESULT */}
         {screen==="result"&&(
           <div style={{animation:"fadein 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
               <div style={{fontSize:15,fontWeight:700,color:C.green}}>✓ SOW Ready</div>
-              <button onClick={reset} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>New SOW</button>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={backToEdit} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✎ Edit</button>
+                <button onClick={reset} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>New SOW</button>
+              </div>
             </div>
             <div style={{background:C.white,border:"1.5px solid "+C.border,borderRadius:12,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:C.text,maxHeight:"62vh",overflowY:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
               {result}
