@@ -20,7 +20,7 @@ const SOW_TYPES = [
   { id:"contents_relocation",label:"Contents Relocation",    icon:"🚚" },
   { id:"stripout",           label:"Strip Out",              icon:"🔨" },
   { id:"flooring",           label:"Flooring Removal",       icon:"🪵" },
-  { id:"flood",              label:"Flood Remediation",      icon:"💧" },
+  { id:"flood",              label:"Building and Contents / Large SOW", icon:"🏗️" },
   { id:"restoration",        label:"Restoration Cleaning",   icon:"✨" },
   { id:"drying",             label:"Drying",                 icon:"💨" },
 ];
@@ -162,6 +162,7 @@ function buildContents(d, works) {
     "Consumables Breakdown",
     "List of consumables required.",
     "\t• Antimicrobial solution\n\t• Filters / bags\n\t• Microfibre cloths\n\t• Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)",
+    ...(d.boxes && d.boxes.trim() ? ["\t• Packing boxes required: " + d.boxes.trim()] : []),
     ...(d.specCons === "yes" && d.consDetail ? ["\t• " + d.consDetail] : []),
     ...(d.truck === "yes" ? ["", "Truck Required for " + d.truckDays + " day" + (d.truckDays > 1 ? "s" : "") + ":", "\t• Relocation of contents\n\t• Disposal of non-restorable items\n\t• Reinstatement of contents"] : []),
     ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
@@ -182,12 +183,6 @@ function buildContentsRelocation(d, works) {
   if (d.offsite === "yes" && d.storageSize) locationLines.push("\t• Off-site storage capacity required: " + d.storageSize);
   else if (d.offsite === "yes") locationLines.push("\t• Off-site storage required — capacity to be confirmed");
 
-  const equipDefs = [
-    {key:"truck",   label:"Truck"},
-    {key:"trolley", label:"Trolley / Hand Trolley"},
-    {key:"straps",  label:"Lifting Straps"},
-  ];
-
   return [
     "SOW - Contents Relocation",
     "",
@@ -204,12 +199,10 @@ function buildContentsRelocation(d, works) {
     "General summary of labour carried out onsite.",
     labourLines.join("\n") || "\t• Labour carried out during initial attendance",
     "",
-    "Equipment Breakdown",
-    equipBlock([{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}], d.equip),
-    "",
     "Consumables Breakdown",
     "List of consumables required.",
     "\t• Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)",
+    ...(d.boxes && d.boxes.trim() ? ["\t• Packing boxes required: " + d.boxes.trim()] : []),
     ...(d.specCons === "yes" && d.consDetail ? ["\t• " + d.consDetail] : []),
     ...(d.truck === "yes" ? ["", "Truck required: Yes\n\t• Number of days: " + (d.truckDays || "To be confirmed")] : []),
     ...(d.addReqs ? ["", "Additional Requirements", d.addReqs.split(/[,\n]/).filter(Boolean).map(r => "\t• " + r.trim()).join("\n")] : []),
@@ -305,7 +298,7 @@ function buildFlooring(d, works) {
 }
 
 function buildFlood(d, works) {
-  const sections = ["SOW - Flood Remediation", "", "Room Name / Area: " + (d.areas || "To be confirmed"), ""];
+  const sections = ["SOW - Building and Contents / Large SOW", "", "Room Name / Area: " + (d.areas || "To be confirmed"), ""];
 
   // Other trades (from strip out phase)
   if (d.phase2 === "yes") {
@@ -604,6 +597,39 @@ function EquipGrid({ defs, values, setValues }) {
   );
 }
 
+const ROOMS = ["Master bedroom","Bedroom 2","Bedroom 3","Bedroom 4","Bathroom","Ensuite","Walk-in wardrobe","Kitchen","Living room","Dining room","Garage","Laundry","Hallway 1","Hallway 2","Media room"];
+
+function RoomPicker({ selected, setSelected, extra, setExtra }) {
+  const toggle = room => setSelected(prev => prev.includes(room) ? prev.filter(r => r !== room) : [...prev, room]);
+  return (
+    <div>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+        {ROOMS.map(room => {
+          const on = selected.includes(room);
+          return (
+            <button key={room} onClick={() => toggle(room)}
+              style={{ padding:"8px 14px", borderRadius:8, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
+                border:"1.5px solid "+(on ? C.green : C.border),
+                background: on ? C.green : C.white,
+                color: on ? "#fff" : C.muted }}>
+              {on ? "✓ " : ""}{room}
+            </button>
+          );
+        })}
+      </div>
+      <span style={lbl}>Other rooms / areas (if any)</span>
+      <TextField value={extra} onChange={setExtra} placeholder="e.g. study, sunroom, attic…" rows={1}/>
+    </div>
+  );
+}
+
+// Combine selected rooms + extra into a single string for the document
+function roomsToText(selected, extra) {
+  const parts = [...selected];
+  if (extra && extra.trim()) parts.push(extra.trim());
+  return parts.join(", ");
+}
+
 function GenBtn({ onClick, loading }) {
   return (
     <button onClick={onClick} disabled={loading} style={{ width:"100%", padding:"16px", borderRadius:12, marginTop:4,
@@ -616,7 +642,7 @@ function GenBtn({ onClick, loading }) {
 
 // ── MOULD FORM ────────────────────────────────────────────────────────────────
 function MouldForm({ onResult }) {
-  const [areas,setAreas]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [otherTrades,setOtherTrades]=useState(null);
   const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
   const [elecActive,setElecActive]=useState(null); const [electrician,setElectrician]=useState("");
@@ -640,8 +666,8 @@ function MouldForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "translate" },
       builder:     { text: builder,     mode: "trades"    },
       electrician: { text: electrician, mode: "trades"    },
       plumber:     { text: plumber,     mode: "trades"    },
@@ -652,7 +678,7 @@ function MouldForm({ onResult }) {
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
     onResult(buildMould({
-      areas:cleaned.areas, otherTrades,
+      areas, otherTrades,
       builderActive, builder:cleaned.builder,
       elecActive, electrician:cleaned.electrician,
       plumbActive, plumber:cleaned.plumber,
@@ -667,7 +693,7 @@ function MouldForm({ onResult }) {
   return (<div>
     {/* 1. Areas */}
     <Sec number={1} title="Areas / Rooms Affected">
-      <TextField value={areas} onChange={setAreas} placeholder="e.g. kitchen, bedroom 1, hallway ceiling…"/>
+      <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
     {/* 2. Other Trades */}
@@ -748,7 +774,7 @@ function MouldForm({ onResult }) {
 
 // ── CONTENTS FORM ─────────────────────────────────────────────────────────────
 function ContentsForm({ onResult }) {
-  const [areas,setAreas]=useState(""); const [works,setWorks]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState(""); const [works,setWorks]=useState("");
   const [phases,setPhases]=useState({
     initial:    {active:null, techs:3, hours:20},
     packing:    {active:null, techs:3, hours:8},
@@ -765,6 +791,7 @@ function ContentsForm({ onResult }) {
   const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
   const [addReqs,setAddReqs]=useState("");
   const [siteNotes,setSiteNotes]=useState("");
+  const [boxes,setBoxes]=useState("");
   const [loading,setLoading]=useState(false);
 
   const setP=(k,f,v)=>setPhases(p=>({...p,[k]:{...p[k],[f]:v}}));
@@ -782,6 +809,7 @@ function ContentsForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     // Convert phases to old format for buildContents
     const phasesForBuild = {};
     PHASE_DEF.forEach(p => {
@@ -791,7 +819,6 @@ function ContentsForm({ onResult }) {
       };
     });
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "translate" },
       works:       { text: works || WORKS_TEMPLATES.contents, mode: "bullets" },
       onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
       storageSize: { text: storageSize, mode: "translate" },
@@ -800,11 +827,11 @@ function ContentsForm({ onResult }) {
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
     onResult(buildContents({
-      areas:cleaned.areas, phases:phasesForBuild, equip,
+      areas, phases:phasesForBuild, equip,
       onsite, onsiteRoom:cleaned.onsiteRoom,
       offsite, storageSize:cleaned.storageSize,
       truck, truckDays,
-      specCons, consDetail:cleaned.consDetail,
+      specCons, consDetail:cleaned.consDetail, boxes,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
     }, cleaned.works));
     setLoading(false);
@@ -813,7 +840,7 @@ function ContentsForm({ onResult }) {
   return (<div>
     {/* 1. Areas */}
     <Sec number={1} title="Areas / Rooms Affected">
-      <TextField value={areas} onChange={setAreas} placeholder="e.g. entire property…"/>
+      <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
     {/* 2. Works Required */}
@@ -874,9 +901,13 @@ function ContentsForm({ onResult }) {
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
         {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
       </div>
-      <span style={lbl}>Anything special beyond the standard kit?</span>
-      <YesNo value={specCons} onChange={setSpecCons}/>
-      {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra blankets, specialised packing…" rows={2}/></div>}
+      <span style={lbl}>How many packing boxes required?</span>
+      <TextField value={boxes} onChange={setBoxes} placeholder="e.g. 10 large, 15 medium, 5 small…" rows={1}/>
+      <div style={{marginTop:14}}>
+        <span style={lbl}>Anything special beyond the standard kit?</span>
+        <YesNo value={specCons} onChange={setSpecCons}/>
+        {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra blankets, specialised packing…" rows={2}/></div>}
+      </div>
     </Sec>
 
     {/* 8. Additional Requirements */}
@@ -895,24 +926,23 @@ function ContentsForm({ onResult }) {
 
 // ── CONTENTS RELOCATION FORM ──────────────────────────────────────────────────
 function ContentsRelocationForm({ onResult }) {
-  const [areas,setAreas]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [works,setWorks]=useState("");
   const [techsInitial,setTechsInitial]=useState(3); const [hoursInitial,setHoursInitial]=useState(20);
   const [techsReinstate,setTechsReinstate]=useState(3); const [hoursReinstate,setHoursReinstate]=useState(8);
   const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
   const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
   const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
-  const [equip,setEquip]=useState({trolley:{qty:1,days:1},straps:{qty:1,days:1}});
   const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
+  const [boxes,setBoxes]=useState("");
   const [addReqs,setAddReqs]=useState("");
   const [siteNotes,setSiteNotes]=useState("");
   const [loading,setLoading]=useState(false);
-  const DEFS=[{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}];
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "translate" },
       works:       { text: works || WORKS_TEMPLATES.contents_relocation, mode: "bullets" },
       onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
       storageSize: { text: storageSize, mode: "translate" },
@@ -921,11 +951,11 @@ function ContentsRelocationForm({ onResult }) {
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
     onResult(buildContentsRelocation({
-      areas:cleaned.areas, techsInitial, hoursInitial, techsReinstate, hoursReinstate,
+      areas, techsInitial, hoursInitial, techsReinstate, hoursReinstate,
       onsite, onsiteRoom:cleaned.onsiteRoom,
       offsite, storageSize:cleaned.storageSize,
-      truck, truckDays, equip,
-      specCons, consDetail:cleaned.consDetail,
+      truck, truckDays,
+      specCons, consDetail:cleaned.consDetail, boxes,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
     }, cleaned.works));
     setLoading(false);
@@ -933,7 +963,7 @@ function ContentsRelocationForm({ onResult }) {
 
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected">
-      <TextField value={areas} onChange={setAreas} placeholder="e.g. entire property, ground floor…"/>
+      <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
     <Sec number={2} title="Works Required">
@@ -983,24 +1013,24 @@ function ContentsRelocationForm({ onResult }) {
       </div>}
     </Sec>
 
-    <Sec number={7} title="Equipment">
-      <EquipGrid defs={DEFS} values={equip} setValues={setEquip}/>
-    </Sec>
-
-    <Sec number={8} title="Consumables">
+    <Sec number={7} title="Consumables">
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
         <span style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>Moving supplies (boxes, tape, bubble wrap, blankets, shrink wrap, butcher paper, etc.)</span>
       </div>
-      <span style={lbl}>Anything special beyond the standard kit?</span>
-      <YesNo value={specCons} onChange={setSpecCons}/>
-      {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra furniture blankets, specialised packing materials…" rows={2}/></div>}
+      <span style={lbl}>How many packing boxes required?</span>
+      <TextField value={boxes} onChange={setBoxes} placeholder="e.g. 10 large, 15 medium, 5 small…" rows={1}/>
+      <div style={{marginTop:14}}>
+        <span style={lbl}>Anything special beyond the standard kit?</span>
+        <YesNo value={specCons} onChange={setSpecCons}/>
+        {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra furniture blankets, specialised packing materials…" rows={2}/></div>}
+      </div>
     </Sec>
 
-    <Sec number={9} title="Additional Requirements">
+    <Sec number={8} title="Additional Requirements">
       <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
     </Sec>
 
-    <Sec number={10} title="Site Notes — Anything that could help attending technicians">
+    <Sec number={9} title="Site Notes — Anything that could help attending technicians">
       <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. elevator access required, high-rise building, fragile items, no parking on street…" rows={3}/>
     </Sec>
 
@@ -1010,7 +1040,7 @@ function ContentsRelocationForm({ onResult }) {
 
 // ── STRIP OUT FORM ────────────────────────────────────────────────────────────
 function StripOutForm({ onResult }) {
-  const [areas,setAreas]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [otherTrades,setOtherTrades]=useState(null);
   const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
   const [elecActive,setElecActive]=useState(null); const [elec,setElec]=useState("");
@@ -1031,8 +1061,8 @@ function StripOutForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      areas:      { text: areas,      mode: "translate" },
       builder:    { text: builder,    mode: "trades"    },
       elec:       { text: elec,       mode: "trades"    },
       plumb:      { text: plumb,      mode: "trades"    },
@@ -1044,7 +1074,7 @@ function StripOutForm({ onResult }) {
       siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
     onResult(buildStripout({
-      areas:cleaned.areas,
+      areas,
       builderActive, builder:cleaned.builder,
       elecActive, elec:cleaned.elec,
       plumbActive, plumb:cleaned.plumb,
@@ -1069,7 +1099,7 @@ function StripOutForm({ onResult }) {
 
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected">
-      <TextField value={areas} onChange={setAreas} placeholder="e.g. ground floor, entire property…"/>
+      <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
     <Sec number={2} title="Other Trades Required">
@@ -1141,7 +1171,7 @@ function StripOutForm({ onResult }) {
 
 // ── FLOORING FORM ─────────────────────────────────────────────────────────────
 function FlooringForm({ onResult }) {
-  const [areas,setAreas]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [works,setWorks]=useState("");
   const [techs,setTechs]=useState(2); const [hours,setHours]=useState(20);
   const [dryingRequired,setDryingRequired]=useState(null);
@@ -1159,15 +1189,15 @@ function FlooringForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      areas:      { text: areas,      mode: "translate"  },
       works:      { text: works || WORKS_TEMPLATES.flooring, mode: "bullets" },
       consDetail: { text: consDetail, mode: "translate"  },
       addReqs:    { text: addReqs,    mode: "translate"  },
       siteNotes:  { text: siteNotes,  mode: "sitenotes"  },
     });
     onResult(buildFlooring({
-      areas:cleaned.areas, techs, hours,
+      areas, techs, hours,
       dryingRequired, equip, truck, truckDays,
       highCost, specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
@@ -1177,7 +1207,7 @@ function FlooringForm({ onResult }) {
 
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected">
-      <TextField value={areas} onChange={setAreas} placeholder="e.g. living area, entire ground floor…"/>
+      <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
     <Sec number={2} title="Works Required">
@@ -1241,7 +1271,7 @@ function FlooringForm({ onResult }) {
 
 // ── FLOOD FORM ────────────────────────────────────────────────────────────────
 function FloodForm({ onResult }) {
-  const [areas,setAreas]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   // Phase toggles
   const [phase1,setPhase1]=useState(null);
   const [phase2,setPhase2]=useState(null);
@@ -1286,8 +1316,8 @@ function FloodForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      areas:       { text: areas,       mode: "translate" },
       builder:     { text: builder,     mode: "trades"    },
       elec:        { text: elec,        mode: "trades"    },
       plumb:       { text: plumb,       mode: "trades"    },
@@ -1303,7 +1333,7 @@ function FloodForm({ onResult }) {
       siteNotes:  { text: siteNotes,  mode: "sitenotes"  },
     });
     onResult(buildFlood({
-      areas:cleaned.areas, phase1, phase2, phase3,
+      areas, phase1, phase2, phase3,
       techs1, hours1, equip1, onsite, onsiteRoom:cleaned.onsiteRoom,
       offsite, storageSize:cleaned.storageSize, truck1, truckDays1,
       builderActive, builder:cleaned.builder, elecActive, elec:cleaned.elec,
@@ -1326,7 +1356,7 @@ function FloodForm({ onResult }) {
 
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected">
-      <TextField value={areas} onChange={setAreas} placeholder="e.g. entire ground floor, kitchen, living area…"/>
+      <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
     {/* PHASE 1 — Contents Remediation */}
@@ -1447,7 +1477,7 @@ function FloodForm({ onResult }) {
 
 // ── RESTORATION FORM ──────────────────────────────────────────────────────────
 function RestorationForm({ onResult }) {
-  const [areas,setAreas]=useState(""); const [works,setWorks]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState(""); const [works,setWorks]=useState("");
   const [techs,setTechs]=useState(2); const [hours,setHours]=useState(5);
   const [equip,setEquip]=useState({scrubber:{qty:2,days:1},hepa:{qty:1,days:1},fogging:{qty:0,days:1}});
   const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
@@ -1460,15 +1490,15 @@ function RestorationForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      areas:      { text: areas,      mode: "translate" },
       works:      { text: works || WORKS_TEMPLATES.restoration, mode: "bullets" },
       consDetail: { text: consDetail, mode: "translate" },
       addReqs:    { text: addReqs,    mode: "translate" },
       siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
     onResult(buildRestoration({
-      areas:cleaned.areas, techs, hours, equip,
+      areas, techs, hours, equip,
       truck, truckDays, specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
     }, cleaned.works));
@@ -1476,7 +1506,7 @@ function RestorationForm({ onResult }) {
   };
 
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. master bedroom, bedroom 2, closet…"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/></Sec>
     <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe restoration cleaning works…" rows={4} templateKey="restoration"/></Sec>
     <Sec number={3} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
@@ -1510,7 +1540,7 @@ function RestorationForm({ onResult }) {
 
 // ── DRYING FORM ───────────────────────────────────────────────────────────────
 function DryingForm({ onResult }) {
-  const [areas,setAreas]=useState(""); const [works,setWorks]=useState("");
+  const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState(""); const [works,setWorks]=useState("");
   const [techs,setTechs]=useState(1); const [hours,setHours]=useState(5);
   const [equip,setEquip]=useState({dehum:{qty:1,days:5},mover:{qty:3,days:5}});
   const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
@@ -1522,15 +1552,15 @@ function DryingForm({ onResult }) {
 
   const go = async () => {
     setLoading(true);
+    const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      areas:      { text: areas,      mode: "translate" },
       works:      { text: works || WORKS_TEMPLATES.drying, mode: "bullets" },
       consDetail: { text: consDetail, mode: "translate" },
       addReqs:    { text: addReqs,    mode: "translate" },
       siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
     onResult(buildDrying({
-      areas:cleaned.areas, techs, hours, equip,
+      areas, techs, hours, equip,
       specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
     }, cleaned.works));
@@ -1538,7 +1568,7 @@ function DryingForm({ onResult }) {
   };
 
   return (<div>
-    <Sec number={1} title="Areas / Rooms Affected"><TextField value={areas} onChange={setAreas} placeholder="e.g. main bedroom, bedroom 2, hallway…"/></Sec>
+    <Sec number={1} title="Areas / Rooms Affected"><RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/></Sec>
     <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe drying works…" rows={3} templateKey="drying"/></Sec>
     <Sec number={3} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
