@@ -63,7 +63,6 @@ const LABOUR_FULL   = "\t• Labour carried out during initial attendance\n\t•
 const LABOUR_SHORT  = "\t• Labour carried out during initial attendance\n\t• Final checks and confirmation of completion";
 
 function buildMould(d, works) {
-  // Trades block — only trades marked Yes
   const tradeLines = [];
   if (d.builderActive === "yes" && d.builder)       tradeLines.push("Builder:\n\t- " + d.builder);
   if (d.elecActive === "yes" && d.electrician)      tradeLines.push("Electrician:\n\t- " + d.electrician);
@@ -71,7 +70,6 @@ function buildMould(d, works) {
   if (d.otherTradeActive === "yes" && d.otherTrade) tradeLines.push("Other:\n\t- " + d.otherTrade);
   const tradesText = tradeLines.length ? tradeLines.join("\n") : "None";
 
-  // Labour lines depend on whether drying is required
   const labourLines = d.dryingRequired === "yes"
     ? LABOUR_FULL
     : "\t• Labour carried out during initial attendance\n\t• Moisture readings and monitoring\n\t• Final checks and confirmation of completion";
@@ -84,7 +82,6 @@ function buildMould(d, works) {
   equipDefs.push({key:"hepa",    label:"HEPA Vacuumed"});
   equipDefs.push({key:"poles",   label:"Containment Poles"});
 
-  // Consumables
   const cons = [
     "Antimicrobial solution","Plastic sheeting","PPE","Filters / bags",
     "Microfibre cloths","Containment doors","Multi tools blade","Blade",
@@ -300,7 +297,6 @@ function buildFlooring(d, works) {
 function buildFlood(d, works) {
   const sections = ["SOW - Building and Contents / Large SOW", "", "Room Name / Area: " + (d.areas || "To be confirmed"), ""];
 
-  // Other trades (from strip out phase)
   if (d.phase2 === "yes") {
     const trades = [];
     if (d.builderActive === "yes" && d.builder) trades.push("Builder:\n\t- " + d.builder);
@@ -320,7 +316,6 @@ function buildFlood(d, works) {
 
   sections.push("**Preparation for Restoration Cleaning**");
 
-  // Phase 1 — Contents Remediation
   if (d.phase1 === "yes") {
     sections.push("", "1 - Contents Remediation:");
     sections.push(tobullets(works.w1));
@@ -338,7 +333,6 @@ function buildFlood(d, works) {
     if (d.truck1 === "yes") sections.push("", "Truck required for " + d.truckDays1 + " day" + (d.truckDays1>1?"s":"") + ".");
   }
 
-  // Phase 2 — Strip Out
   if (d.phase2 === "yes") {
     sections.push("", "2 - Strip Out:");
     sections.push(tobullets(works.w2));
@@ -351,7 +345,6 @@ function buildFlood(d, works) {
     sections.push("\t• Plastic sheeting\n\t• PPE\n\t• Rubbish bags");
   }
 
-  // Phase 3 — Site Preparation
   if (d.phase3 === "yes") {
     sections.push("", "3 - Site Preparation for Restoration Cleaning:");
     sections.push(tobullets(works.w3));
@@ -361,7 +354,6 @@ function buildFlood(d, works) {
     sections.push(equipBlock([{key:"scrubber",label:"Air Scrubbers"}], d.equip3));
   }
 
-  // Phase 4 — Restoration Cleaning
   sections.push("", "**Restoration Cleaning**", "");
   sections.push("4 - Restoration Cleaning:");
   sections.push(tobullets(works.w4));
@@ -383,9 +375,6 @@ function buildFlood(d, works) {
   return sections.join("\n");
 }
 
-// alias so typo above works
-function toButtons(t) { return tobullets(t); }
-
 function buildRestoration(d, works) {
   const cons = ["PPE","Filters / bags","Cloth tape/masking tape","Rubbish bags","Antimicrobial","Odorx"];
   if (d.specCons === "yes" && d.consDetail) cons.push(d.consDetail);
@@ -396,7 +385,7 @@ function buildRestoration(d, works) {
     "",
     ...(d.siteNotes ? ["Site Notes:", tobullets(d.siteNotes), ""] : []),
     "\tWorks required:",
-    toButtons(works),
+    tobullets(works),
     "",
     "General Scope of Works",
     GENERAL_SCOPE,
@@ -428,7 +417,7 @@ function buildDrying(d, works) {
     "",
     ...(d.siteNotes ? ["Site Notes:", tobullets(d.siteNotes), ""] : []),
     "\tWorks required:",
-    toButtons(works),
+    tobullets(works),
     "",
     "General Scope of Works",
     "\t• Compile report of findings and works carried out for each attendance",
@@ -466,14 +455,14 @@ async function aiClean(text, mode = "inline") {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 400,
+        max_tokens: 800,
         messages: [{ role: "user", content: prompts[mode] || prompts.inline }],
       }),
     });
     const data = await res.json();
     return data.content?.map(b => b.text || "").join("").trim() || text;
   } catch {
-    return text;
+    return "⚠️ [AI error — check this field] " + text;
   }
 }
 
@@ -623,7 +612,6 @@ function RoomPicker({ selected, setSelected, extra, setExtra }) {
   );
 }
 
-// Combine selected rooms + extra into a single string for the document
 function roomsToText(selected, extra) {
   const parts = [...selected];
   if (extra && extra.trim()) parts.push(extra.trim());
@@ -691,12 +679,10 @@ function MouldForm({ onResult }) {
   };
 
   return (<div>
-    {/* 1. Areas */}
     <Sec number={1} title="Areas / Rooms Affected">
       <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
-    {/* 2. Other Trades */}
     <Sec number={2} title="Other Trades Required">
       <span style={lbl}>Any trades needed before works begin?</span>
       <YesNo value={otherTrades} onChange={setOtherTrades}/>
@@ -717,12 +703,10 @@ function MouldForm({ onResult }) {
       )}
     </Sec>
 
-    {/* 3. Works Required */}
     <Sec number={3} title="Works Required">
       <TextField value={works} onChange={setWorks} placeholder="Describe what needs to be done…" rows={5} templateKey="mould"/>
     </Sec>
 
-    {/* 4. Labour */}
     <Sec number={4} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
@@ -730,7 +714,6 @@ function MouldForm({ onResult }) {
       </div>
     </Sec>
 
-    {/* 5. Equipment */}
     <Sec number={5} title="Equipment">
       <span style={lbl}>Drying equipment required?</span>
       <YesNo value={dryingRequired} onChange={setDryingRequired}/>
@@ -745,7 +728,6 @@ function MouldForm({ onResult }) {
       </div>
     </Sec>
 
-    {/* 6. Consumables */}
     <Sec number={6} title="Consumables">
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
         {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
@@ -755,7 +737,6 @@ function MouldForm({ onResult }) {
       {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra sheeting, specialised PPE…" rows={2}/></div>}
     </Sec>
 
-    {/* 7. Additional Requirements */}
     <Sec number={7} title="Additional Requirements">
       <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
@@ -763,7 +744,6 @@ function MouldForm({ onResult }) {
       </div>
     </Sec>
 
-    {/* 8. Site Notes */}
     <Sec number={8} title="Site Notes — Anything that could help attending technicians">
       <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling — large ladder required, access via elevator, trolley needed, park on street only…" rows={3}/>
     </Sec>
@@ -810,7 +790,6 @@ function ContentsForm({ onResult }) {
   const go = async () => {
     setLoading(true);
     const areas = roomsToText(rooms, roomsExtra);
-    // Convert phases to old format for buildContents
     const phasesForBuild = {};
     PHASE_DEF.forEach(p => {
       phasesForBuild[p.key] = {
@@ -838,17 +817,14 @@ function ContentsForm({ onResult }) {
   };
 
   return (<div>
-    {/* 1. Areas */}
     <Sec number={1} title="Areas / Rooms Affected">
       <RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/>
     </Sec>
 
-    {/* 2. Works Required */}
     <Sec number={2} title="Works Required">
       <TextField value={works} onChange={setWorks} placeholder="Describe contents works…" rows={4} templateKey="contents"/>
     </Sec>
 
-    {/* 3. Labour by Phase */}
     <Sec number={3} title="Labour by Phase">
       {PHASE_DEF.map(p=>(
         <div key={p.key} style={{marginBottom:18, paddingBottom:18, borderBottom:"1px solid "+C.border}}>
@@ -864,7 +840,6 @@ function ContentsForm({ onResult }) {
       ))}
     </Sec>
 
-    {/* 4. Relocation */}
     <Sec number={4} title="Relocation">
       <span style={lbl}>Contents relocated to another room on-site?</span>
       <YesNo value={onsite} onChange={setOnsite}/>
@@ -882,7 +857,6 @@ function ContentsForm({ onResult }) {
       </div>
     </Sec>
 
-    {/* 5. Truck */}
     <Sec number={5} title="Truck Required?">
       <YesNo value={truck} onChange={setTruck}/>
       {truck==="yes"&&<div style={{marginTop:12}}>
@@ -891,12 +865,10 @@ function ContentsForm({ onResult }) {
       </div>}
     </Sec>
 
-    {/* 6. Equipment */}
     <Sec number={6} title="Equipment">
       <EquipGrid defs={DEFS} values={equip} setValues={setEquip}/>
     </Sec>
 
-    {/* 7. Consumables */}
     <Sec number={7} title="Consumables">
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
         {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
@@ -910,12 +882,10 @@ function ContentsForm({ onResult }) {
       </div>
     </Sec>
 
-    {/* 8. Additional Requirements */}
     <Sec number={8} title="Additional Requirements">
       <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
     </Sec>
 
-    {/* 9. Site Notes */}
     <Sec number={9} title="Site Notes — Anything that could help attending technicians">
       <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. elevator access, fragile items, no parking on street…" rows={3}/>
     </Sec>
@@ -1087,7 +1057,7 @@ function StripOutForm({ onResult }) {
     setLoading(false);
   };
 
-  const TradeRow = ({ number, label, active, setActive, value, setValue, placeholder }) => (
+  const TradeRow = ({ label, active, setActive, value, setValue, placeholder }) => (
     <div style={{marginBottom:16, paddingBottom:16, borderBottom:"1px solid "+C.border}}>
       <span style={{...lbl, color:C.green, marginBottom:8}}>{label}</span>
       <YesNo value={active} onChange={setActive}/>
@@ -1272,19 +1242,16 @@ function FlooringForm({ onResult }) {
 // ── FLOOD FORM ────────────────────────────────────────────────────────────────
 function FloodForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
-  // Phase toggles
   const [phase1,setPhase1]=useState(null);
   const [phase2,setPhase2]=useState(null);
   const [phase3,setPhase3]=useState(null);
 
-  // Phase 1 — Contents Remediation
   const [w1,setW1]=useState(""); const [techs1,setTechs1]=useState(3); const [hours1,setHours1]=useState(12);
   const [equip1,setEquip1]=useState({trolley:{qty:1,days:1},straps:{qty:1,days:1}});
   const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
   const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
   const [truck1,setTruck1]=useState(null); const [truckDays1,setTruckDays1]=useState(1);
 
-  // Phase 2 — Strip Out
   const [w2,setW2]=useState(""); const [techs2,setTechs2]=useState(3); const [hours2,setHours2]=useState(20);
   const [equip2,setEquip2]=useState({scrubber:{qty:4,days:2},hepa:{qty:1,days:1}});
   const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
@@ -1295,11 +1262,9 @@ function FloodForm({ onResult }) {
   const [skipBin,setSkipBin]=useState(null); const [skipDetail,setSkipDetail]=useState("");
   const [truck2,setTruck2]=useState(null);
 
-  // Phase 3 — Site Preparation
   const [w3,setW3]=useState(""); const [techs3,setTechs3]=useState(2); const [hours3,setHours3]=useState(4);
   const [equip3,setEquip3]=useState({scrubber:{qty:4,days:1}});
 
-  // Phase 4 — Restoration Cleaning (always shown)
   const [w4,setW4]=useState(""); const [techs4,setTechs4]=useState(2); const [hours4,setHours4]=useState(15);
   const [drying4,setDrying4]=useState(null);
   const [equip4,setEquip4]=useState({dehum:{qty:3,days:5},mover:{qty:6,days:5},scrubber:{qty:3,days:1},hepa:{qty:2,days:1}});
@@ -1463,11 +1428,11 @@ function FloodForm({ onResult }) {
       </div>
     </div>
 
-    <Sec number={2} title="Additional Requirements">
+    <Sec number={5} title="Additional Requirements">
       <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
     </Sec>
 
-    <Sec number={3} title="Site Notes — Anything that could help attending technicians">
+    <Sec number={6} title="Site Notes — Anything that could help attending technicians">
       <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling, elevator access, no parking on street…" rows={3}/>
     </Sec>
 
