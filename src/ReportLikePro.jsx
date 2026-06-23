@@ -229,7 +229,7 @@ export default function ReportLikePro({ onBack }) {
         return ia - ib;
       })
       .map(k => selected[k]);
-    navigator.clipboard.writeText(phrases.join("\n"));
+    navigator.clipboard.writeText(phrases.map(p => "• " + p).join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
