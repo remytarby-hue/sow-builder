@@ -2,24 +2,57 @@ import { useState } from "react";
 import SOWBuilder from "./SOWBuilder";
 import ReportLikePro from "./ReportLikePro";
 
-const C = { bg:"#f5f6f5", white:"#ffffff", green:"#5a9a3a", greenDark:"#3d6b27", greenLight:"#eaf3e5", border:"#d4e4cb", text:"#1a2e12", muted:"#6b8560", subtle:"#f0f7ec" };
+const C = {
+  bg: "#f0ede8",
+  white: "#ffffff",
+  black: "#111111",
+  green: "#5a9a3a",
+  greenDark: "#3d6b27",
+  greenLight: "#eaf3e5",
+  border: "#e2ddd8",
+  text: "#111111",
+  muted: "#888880",
+};
+
+const IconDoc = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+    <line x1="10" y1="9" x2="8" y2="9"/>
+  </svg>
+);
+
+const IconPen = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 20h9"/>
+    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+  </svg>
+);
+
+const IconChevron = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="9 18 15 12 9 6"/>
+  </svg>
+);
 
 const TOOLS = [
   {
     id: "sow",
-    icon: "📋",
+    Icon: IconDoc,
     title: "SOW Builder",
     subtitle: "Scope of Work Generator",
-    description: "Generate a complete Scope of Work for any job type — water, mould, fire, contents, drying and more.",
-    tags: ["Water", "Mould", "Fire", "Drying", "Contents"],
+    description: "Generate a complete Scope of Work for any job in minutes.",
+    accent: C.black,
   },
   {
     id: "report",
-    icon: "✍️",
+    Icon: IconPen,
     title: "Report Like a Pro",
     subtitle: "Phrase Library",
-    description: "Tap any phrase to copy it instantly. All the sentences you need to write a proper job report, organised by category.",
-    tags: ["Inspection", "Mould", "Fire", "Contents", "Recommendations"],
+    description: "Select phrases, copy them all, paste straight into your report.",
+    accent: C.green,
   },
 ];
 
@@ -33,56 +66,62 @@ export default function App() {
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',Arial,sans-serif",color:C.text}}>
       <style>{`
         @keyframes fadein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-        button:active{opacity:0.85}
+        .tool-card:active{transform:scale(0.98);opacity:0.9}
       `}</style>
 
       {/* HEADER */}
-      <div style={{background:C.white,borderBottom:"2px solid "+C.green,padding:"20px 20px 16px",textAlign:"center",boxShadow:"0 2px 8px rgba(90,154,58,0.08)"}}>
-        <div style={{fontSize:11,color:C.green,fontWeight:800,letterSpacing:3,textTransform:"uppercase",marginBottom:4}}>Major Industries</div>
-        <div style={{fontSize:24,fontWeight:800,color:C.text,letterSpacing:-0.5}}>Restorer Assistant</div>
-        <div style={{fontSize:13,color:C.muted,marginTop:4,fontWeight:500}}>Your toolkit for faster, better documentation</div>
+      <div style={{background:C.black,padding:"22px 20px 26px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+          <img src="/logo.svg" alt="Major Industries" style={{width:44,height:44,objectFit:"contain"}} />
+          <div>
+            <div style={{fontSize:13,fontWeight:700,color:"#fff",letterSpacing:1,textTransform:"uppercase",lineHeight:1.2}}>Major Industries</div>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.45)",letterSpacing:2,textTransform:"uppercase"}}>Restoration</div>
+          </div>
+        </div>
+        <div style={{fontSize:12,color:"rgba(255,255,255,0.5)",marginBottom:4}}>Internal tool</div>
+        <div style={{fontSize:24,fontWeight:800,color:"#fff",letterSpacing:-0.5}}>Restorer Assistant</div>
       </div>
 
-      {/* TOOL CARDS */}
-      <div style={{maxWidth:600,margin:"0 auto",padding:"28px 16px",display:"flex",flexDirection:"column",gap:16,animation:"fadein 0.3s ease"}}>
-        {TOOLS.map(tool => (
+      {/* TOOLS */}
+      <div style={{padding:"20px 16px",display:"flex",flexDirection:"column",gap:12,animation:"fadein 0.3s ease"}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Tools</div>
+
+        {TOOLS.map(({ id, Icon, title, subtitle, description, accent }) => (
           <button
-            key={tool.id}
-            onClick={() => setScreen(tool.id)}
+            key={id}
+            className="tool-card"
+            onClick={() => setScreen(id)}
             style={{
               background:C.white,
-              border:"2px solid "+C.border,
+              border:"1px solid "+C.border,
               borderRadius:16,
-              padding:"22px 20px",
-              textAlign:"left",
+              padding:"16px 14px",
+              display:"flex",
+              alignItems:"center",
+              gap:14,
               cursor:"pointer",
               fontFamily:"inherit",
-              boxShadow:"0 2px 8px rgba(0,0,0,0.05)",
-              transition:"border-color 0.15s,box-shadow 0.15s,transform 0.1s",
+              textAlign:"left",
+              transition:"transform 0.1s,opacity 0.1s",
+              width:"100%",
             }}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor=C.green;e.currentTarget.style.boxShadow="0 4px 16px rgba(90,154,58,0.18)";e.currentTarget.style.transform="translateY(-1px)";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.05)";e.currentTarget.style.transform="translateY(0)";}}
           >
-            <div style={{display:"flex",alignItems:"flex-start",gap:16}}>
-              <div style={{fontSize:36,lineHeight:1}}>{tool.icon}</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:19,fontWeight:800,color:C.text,marginBottom:2}}>{tool.title}</div>
-                <div style={{fontSize:11,color:C.green,fontWeight:700,textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>{tool.subtitle}</div>
-                <div style={{fontSize:14,color:C.muted,lineHeight:1.55,marginBottom:14}}>{tool.description}</div>
-                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {tool.tags.map(tag=>(
-                    <span key={tag} style={{background:C.greenLight,color:C.greenDark,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:700,border:"1px solid "+C.border}}>{tag}</span>
-                  ))}
-                </div>
-              </div>
-              <div style={{color:C.green,fontSize:20,alignSelf:"center"}}>›</div>
+            <div style={{width:48,height:48,borderRadius:14,background:accent,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Icon />
+            </div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:15,fontWeight:700,color:C.text,marginBottom:2}}>{title}</div>
+              <div style={{fontSize:10,fontWeight:700,color:C.green,textTransform:"uppercase",letterSpacing:0.8,marginBottom:6}}>{subtitle}</div>
+              <div style={{fontSize:12,color:C.muted,lineHeight:1.5}}>{description}</div>
+            </div>
+            <div style={{width:30,height:30,borderRadius:"50%",background:C.green,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <IconChevron />
             </div>
           </button>
         ))}
       </div>
 
-      {/* FOOTER */}
-      <div style={{textAlign:"center",padding:"10px 20px 30px",color:C.muted,fontSize:11,fontWeight:500}}>
+      <div style={{textAlign:"center",padding:"8px 16px 30px",fontSize:11,color:C.muted}}>
         Major Industries Restoration — Internal Tool
       </div>
     </div>

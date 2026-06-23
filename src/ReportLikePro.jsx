@@ -249,15 +249,18 @@ export default function ReportLikePro({ onBack }) {
       `}</style>
 
       {/* HEADER */}
-      <div style={{background:C.white,borderBottom:"2px solid "+C.green,padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10,boxShadow:"0 2px 8px rgba(90,154,58,0.08)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12}}>
-          {onBack&&<button onClick={onBack} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Home</button>}
-          <div>
-            <div style={{fontSize:10,color:C.green,fontWeight:800,letterSpacing:2,textTransform:"uppercase"}}>Major Industries</div>
-            <div style={{fontSize:17,fontWeight:700,color:C.text}}>Report Like a Pro</div>
+      <div style={{background:"#111111",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          {onBack&&<button onClick={onBack} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Home</button>}
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <img src="/logo.svg" alt="" style={{width:30,height:30,objectFit:"contain"}} />
+            <div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,0.45)",fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Major Industries</div>
+              <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>Report Like a Pro</div>
+            </div>
           </div>
         </div>
-        <div style={{fontSize:11,color:C.muted,fontWeight:600}}>Select + Copy All</div>
+        <div style={{fontSize:11,color:"rgba(255,255,255,0.5)",fontWeight:600}}>Select + Copy</div>
       </div>
 
       {/* CATEGORY TABS */}
