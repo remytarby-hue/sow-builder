@@ -188,20 +188,62 @@ const CATEGORIES = [
 
 export default function ReportLikePro({ onBack }) {
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].id);
-  const [copiedPhrase, setCopiedPhrase] = useState(null);
+  const [selected, setSelected] = useState({});
+  const [copied, setCopied] = useState(false);
 
   const category = CATEGORIES.find(c => c.id === activeCategory);
+  const selectedInCategory = Object.keys(selected).filter(k => k.startsWith(activeCategory + "|"));
+  const selectedCount = selectedInCategory.length;
 
-  const copyPhrase = (phrase, idx) => {
-    navigator.clipboard.writeText(phrase);
-    setCopiedPhrase(idx);
-    setTimeout(() => setCopiedPhrase(null), 2000);
+  const togglePhrase = (catId, idx) => {
+    const key = catId + "|" + idx;
+    setSelected(prev => {
+      const next = {...prev};
+      if (next[key]) delete next[key];
+      else next[key] = CATEGORIES.find(c => c.id === catId).phrases[idx];
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const next = {...selected};
+    category.phrases.forEach((phrase, idx) => {
+      next[activeCategory + "|" + idx] = phrase;
+    });
+    setSelected(next);
+  };
+
+  const clearAll = () => {
+    const next = {...selected};
+    category.phrases.forEach((_, idx) => {
+      delete next[activeCategory + "|" + idx];
+    });
+    setSelected(next);
+  };
+
+  const copySelected = () => {
+    const phrases = selectedInCategory
+      .sort((a, b) => {
+        const ia = parseInt(a.split("|")[1]);
+        const ib = parseInt(b.split("|")[1]);
+        return ia - ib;
+      })
+      .map(k => selected[k]);
+    navigator.clipboard.writeText(phrases.join("\n"));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const switchCategory = (catId) => {
+    setActiveCategory(catId);
+    setCopied(false);
   };
 
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',Arial,sans-serif",color:C.text,paddingBottom:60}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',Arial,sans-serif",color:C.text,paddingBottom:100}}>
       <style>{`
         @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes slideup{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
         button:active{opacity:0.85}
         ::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-thumb{background:#d4e4cb;border-radius:2px}
       `}</style>
@@ -215,80 +257,124 @@ export default function ReportLikePro({ onBack }) {
             <div style={{fontSize:17,fontWeight:700,color:C.text}}>Report Like a Pro</div>
           </div>
         </div>
-        <div style={{fontSize:11,color:C.muted,fontWeight:600}}>Tap to copy</div>
+        <div style={{fontSize:11,color:C.muted,fontWeight:600}}>Select + Copy All</div>
       </div>
 
       {/* CATEGORY TABS */}
       <div style={{background:C.white,borderBottom:"1px solid "+C.border,overflowX:"auto",WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",gap:0,padding:"0 8px",minWidth:"max-content"}}>
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setActiveCategory(cat.id)}
-              style={{
-                background:"transparent",
-                border:"none",
-                borderBottom: activeCategory===cat.id ? "3px solid "+C.green : "3px solid transparent",
-                color: activeCategory===cat.id ? C.green : C.muted,
-                padding:"12px 14px",
-                fontSize:12,
-                fontWeight: activeCategory===cat.id ? 700 : 500,
-                cursor:"pointer",
-                fontFamily:"inherit",
-                whiteSpace:"nowrap",
-                transition:"color 0.15s,border-color 0.15s",
-              }}
-            >
-              {cat.icon} {cat.label}
-            </button>
-          ))}
+          {CATEGORIES.map(cat => {
+            const countInCat = Object.keys(selected).filter(k => k.startsWith(cat.id + "|")).length;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => switchCategory(cat.id)}
+                style={{
+                  background:"transparent",
+                  border:"none",
+                  borderBottom: activeCategory===cat.id ? "3px solid "+C.green : "3px solid transparent",
+                  color: activeCategory===cat.id ? C.green : C.muted,
+                  padding:"12px 14px",
+                  fontSize:12,
+                  fontWeight: activeCategory===cat.id ? 700 : 500,
+                  cursor:"pointer",
+                  fontFamily:"inherit",
+                  whiteSpace:"nowrap",
+                  transition:"color 0.15s,border-color 0.15s",
+                  position:"relative",
+                }}
+              >
+                {cat.icon} {cat.label}
+                {countInCat > 0 && (
+                  <span style={{marginLeft:5,background:C.green,color:"#fff",borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800}}>{countInCat}</span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* PHRASES */}
-      <div style={{maxWidth:700,margin:"0 auto",padding:"20px 16px",animation:"fadein 0.25s ease"}}>
-        <div style={{fontSize:13,color:C.muted,marginBottom:16,fontWeight:500}}>
-          {category.phrases.length} phrases — tap a card to copy it to clipboard
+      <div style={{maxWidth:700,margin:"0 auto",padding:"16px 16px 20px",animation:"fadein 0.25s ease"}}>
+        {/* Select all / clear row */}
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+          <div style={{fontSize:13,color:C.muted,fontWeight:500}}>
+            {selectedCount > 0 ? <span style={{color:C.green,fontWeight:700}}>{selectedCount} selected</span> : `${category.phrases.length} phrases`}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={selectAll} style={{background:C.greenLight,border:"1px solid "+C.border,color:C.greenDark,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Select all</button>
+            {selectedCount > 0 && <button onClick={clearAll} style={{background:"#fff0f0",border:"1px solid #f5c6c6",color:C.red,borderRadius:7,padding:"5px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Clear</button>}
+          </div>
         </div>
+
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
-          {category.phrases.map((phrase, idx) => (
-            <button
-              key={idx}
-              onClick={() => copyPhrase(phrase, idx)}
-              style={{
-                background: copiedPhrase===idx ? C.greenLight : C.white,
-                border: "1.5px solid " + (copiedPhrase===idx ? C.green : C.border),
-                borderRadius:12,
-                padding:"14px 16px",
-                textAlign:"left",
-                cursor:"pointer",
-                fontFamily:"inherit",
-                fontSize:14,
-                lineHeight:1.5,
-                color: copiedPhrase===idx ? C.greenDark : C.text,
-                display:"flex",
-                alignItems:"flex-start",
-                justifyContent:"space-between",
-                gap:12,
-                boxShadow:"0 1px 4px rgba(0,0,0,0.04)",
-                transition:"background 0.15s,border-color 0.15s",
-              }}
-            >
-              <span style={{flex:1}}>{phrase}</span>
-              <span style={{
-                fontSize:11,
-                fontWeight:700,
-                color: copiedPhrase===idx ? C.green : C.muted,
-                minWidth:52,
-                textAlign:"right",
-                paddingTop:2,
-              }}>
-                {copiedPhrase===idx ? "✓ Copied!" : "Copy"}
-              </span>
-            </button>
-          ))}
+          {category.phrases.map((phrase, idx) => {
+            const key = activeCategory + "|" + idx;
+            const isSelected = !!selected[key];
+            return (
+              <button
+                key={idx}
+                onClick={() => togglePhrase(activeCategory, idx)}
+                style={{
+                  background: isSelected ? C.greenLight : C.white,
+                  border: "1.5px solid " + (isSelected ? C.green : C.border),
+                  borderRadius:12,
+                  padding:"14px 16px",
+                  textAlign:"left",
+                  cursor:"pointer",
+                  fontFamily:"inherit",
+                  fontSize:14,
+                  lineHeight:1.5,
+                  color: C.text,
+                  display:"flex",
+                  alignItems:"flex-start",
+                  gap:12,
+                  boxShadow: isSelected ? "0 2px 8px rgba(90,154,58,0.12)" : "0 1px 4px rgba(0,0,0,0.04)",
+                  transition:"background 0.12s,border-color 0.12s,box-shadow 0.12s",
+                }}
+              >
+                <span style={{
+                  width:20,height:20,minWidth:20,borderRadius:6,
+                  border:"2px solid "+(isSelected ? C.green : C.border),
+                  background: isSelected ? C.green : "#fff",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  marginTop:1,
+                  transition:"background 0.12s,border-color 0.12s",
+                }}>
+                  {isSelected && <span style={{color:"#fff",fontSize:12,fontWeight:900,lineHeight:1}}>✓</span>}
+                </span>
+                <span style={{flex:1}}>{phrase}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* COPY ALL BUTTON — sticky bottom */}
+      {selectedCount > 0 && (
+        <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"12px 16px",background:C.white,borderTop:"2px solid "+C.border,zIndex:20,animation:"slideup 0.2s ease"}}>
+          <div style={{maxWidth:700,margin:"0 auto"}}>
+            <button
+              onClick={copySelected}
+              style={{
+                width:"100%",
+                padding:"15px",
+                borderRadius:12,
+                border:"none",
+                background: copied ? "#27ae60" : C.green,
+                color:"#fff",
+                fontWeight:800,
+                fontSize:15,
+                cursor:"pointer",
+                fontFamily:"inherit",
+                transition:"background 0.2s",
+              }}
+            >
+              {copied ? `✓ Copied! (${selectedCount} phrase${selectedCount>1?"s":""})` : `Copy ${selectedCount} phrase${selectedCount>1?"s":""} to clipboard`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
