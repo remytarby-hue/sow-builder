@@ -1568,6 +1568,24 @@ function DryingForm({ onResult }) {
   </div>);
 }
 
+// ── HISTORY HELPERS ───────────────────────────────────────────────────────────
+const HISTORY_KEY = "sow_history";
+const loadHistory = () => { try { return JSON.parse(localStorage.getItem(HISTORY_KEY)||"[]"); } catch { return []; } };
+const saveToHistory = (entry) => {
+  const h = loadHistory();
+  h.unshift(entry);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0,30)));
+};
+const deleteFromHistory = (id) => {
+  const h = loadHistory().filter(e => e.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+};
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-AU", { day:"numeric", month:"short", year:"numeric" });
+}
+
 // ── ROOT ──────────────────────────────────────────────────────────────────────
 export default function SOWBuilder({ onBack }) {
   const [screen,setScreen]=useState("home");
@@ -1575,12 +1593,32 @@ export default function SOWBuilder({ onBack }) {
   const [result,setResult]=useState("");
   const [copied,setCopied]=useState(false);
   const [formKey,setFormKey]=useState(0);
+  const [address,setAddress]=useState("");
+  const [saved,setSaved]=useState(false);
+  const [history,setHistory]=useState(loadHistory);
+  const [viewEntry,setViewEntry]=useState(null);
 
   const cur = SOW_TYPES.find(t => t.id === type);
-  const handleResult = doc => { setResult(doc); setScreen("result"); window.scrollTo(0,0); };
+  const handleResult = doc => { setResult(doc); setAddress(""); setSaved(false); setScreen("result"); window.scrollTo(0,0); };
   const copy = () => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(()=>setCopied(false),2500); };
-  const reset = () => { setScreen("home"); setType(null); setResult(""); setFormKey(k=>k+1); };
+  const reset = () => { setScreen("home"); setType(null); setResult(""); setFormKey(k=>k+1); setViewEntry(null); };
   const backToEdit = () => { setScreen("form"); };
+
+  const handleSave = () => {
+    if (!address.trim()) return;
+    const entry = { id: Date.now().toString(), address: address.trim(), type, label: cur?.label||type, text: result, date: new Date().toISOString() };
+    saveToHistory(entry);
+    setHistory(loadHistory());
+    setSaved(true);
+  };
+
+  const handleDelete = (id) => {
+    deleteFromHistory(id);
+    setHistory(loadHistory());
+    if (viewEntry?.id === id) { setViewEntry(null); }
+  };
+
+  const openHistory = (entry) => { setViewEntry(entry); setResult(entry.text); setCopied(false); setScreen("result"); window.scrollTo(0,0); };
 
   const FORMS = {
     mould:               <MouldForm              onResult={handleResult}/>,
@@ -1600,15 +1638,16 @@ export default function SOWBuilder({ onBack }) {
         @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
         input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
         textarea:focus{border-color:#5a9a3a !important;outline:none}
+        input:focus{border-color:#5a9a3a !important;outline:none}
         button:active{opacity:0.85}
-        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#d4e4cb;border-radius:2px}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
       `}</style>
 
       {/* HEADER */}
       <div style={{background:"#0f0f0f",borderBottom:"1px solid #222",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           {screen!=="home" && (
-            <button onClick={screen==="result"?backToEdit:reset}
+            <button onClick={()=>{ if(screen==="result") { viewEntry ? (setViewEntry(null), setScreen("home")) : backToEdit(); } else reset(); }}
               style={{background:"#1a1a1a",border:"1px solid #333",color:"#aaa",borderRadius:99,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               Back
@@ -1618,11 +1657,13 @@ export default function SOWBuilder({ onBack }) {
             <img src="/logo.svg" alt="" style={{width:28,height:28,objectFit:"contain"}} />
             <div>
               <div style={{fontSize:9,color:"#5a9a3a",fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Major Industries</div>
-              <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>{screen==="home"?"SOW Builder":cur?cur.label:"SOW Builder"}</div>
+              <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>
+                {screen==="home" ? "SOW Builder" : viewEntry ? viewEntry.address : cur ? cur.label : "SOW Builder"}
+              </div>
             </div>
           </div>
         </div>
-        {screen==="result"&&<button onClick={copy} style={{padding:"8px 20px",borderRadius:99,border:"none",background:copied?"#27ae60":C.green,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{copied?"Copied!":"Copy"}</button>}
+        {screen==="result" && <button onClick={copy} style={{padding:"8px 20px",borderRadius:99,border:"none",background:copied?"#27ae60":C.green,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{copied?"Copied!":"Copy"}</button>}
       </div>
 
       <div style={{maxWidth:600,margin:"0 auto",padding:"22px 16px"}}>
@@ -1630,10 +1671,11 @@ export default function SOWBuilder({ onBack }) {
         {/* HOME */}
         {screen==="home"&&(
           <div style={{animation:"fadein 0.3s ease"}}>
-            <div style={{fontSize:11,color:C.muted,marginBottom:16,fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>Select job type</div>
-            <div style={{display:"flex",flexDirection:"column",gap:10}}>
+            {/* New SOW */}
+            <div style={{fontSize:11,color:C.muted,marginBottom:12,fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>New SOW</div>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:32}}>
               {SOW_TYPES.map(t=>(
-                <button key={t.id} onClick={()=>{setType(t.id);setScreen("form");}}
+                <button key={t.id} onClick={()=>{setType(t.id);setViewEntry(null);setScreen("form");}}
                   style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"16px 16px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left",fontFamily:"inherit",transition:"border-color 0.2s",width:"100%"}}
                   onMouseEnter={e=>e.currentTarget.style.borderColor=C.green}
                   onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}
@@ -1647,11 +1689,32 @@ export default function SOWBuilder({ onBack }) {
                 </button>
               ))}
             </div>
+
+            {/* History */}
+            {history.length > 0 && (
+              <div>
+                <div style={{fontSize:11,color:C.muted,marginBottom:12,fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>Recent Jobs</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {history.map(entry=>(
+                    <div key={entry.id} style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:14,padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
+                      <button onClick={()=>openHistory(entry)} style={{flex:1,background:"transparent",border:"none",cursor:"pointer",textAlign:"left",fontFamily:"inherit",padding:0}}>
+                        <div style={{fontSize:14,fontWeight:600,color:"#eee",marginBottom:3}}>{entry.address}</div>
+                        <div style={{fontSize:12,color:C.muted}}>{entry.label} · {formatDate(entry.date)}</div>
+                      </button>
+                      <button onClick={()=>handleDelete(entry.id)}
+                        style={{background:"transparent",border:"none",cursor:"pointer",color:"#444",padding:"4px",display:"flex",alignItems:"center"}}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* FORM — stays mounted on result screen so data survives Edit */}
-        {(screen==="form"||screen==="result")&&type&&(
+        {/* FORM */}
+        {(screen==="form"||screen==="result")&&type&&!viewEntry&&(
           <div key={formKey} style={{animation:"fadein 0.3s ease", display:screen==="form"?"block":"none"}}>{FORMS[type]}</div>
         )}
 
@@ -1659,18 +1722,50 @@ export default function SOWBuilder({ onBack }) {
         {screen==="result"&&(
           <div style={{animation:"fadein 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:15,fontWeight:700,color:C.green,display:"flex",alignItems:"center",gap:6}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>SOW Ready</div>
+              <div style={{fontSize:15,fontWeight:700,color:C.green,display:"flex",alignItems:"center",gap:6}}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                SOW Ready
+              </div>
               <div style={{display:"flex",gap:8}}>
-                <button onClick={backToEdit} style={{background:"#1a1a1a",border:"1px solid #333",color:"#ccc",borderRadius:99,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                {!viewEntry && <button onClick={backToEdit} style={{background:"#1a1a1a",border:"1px solid #333",color:"#ccc",borderRadius:99,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>}
                 <button onClick={reset} style={{background:"#1a1a1a",border:"1px solid #333",color:"#ccc",borderRadius:99,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>New SOW</button>
               </div>
             </div>
-            <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:"#ddd",maxHeight:"62vh",overflowY:"auto"}}>
+
+            <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:"#ddd",maxHeight:"52vh",overflowY:"auto",marginBottom:12}}>
               {result}
             </div>
-            <button onClick={copy} style={{width:"100%",marginTop:12,padding:"16px",borderRadius:99,background:copied?"#27ae60":C.green,border:"none",color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>
+
+            <button onClick={copy} style={{width:"100%",padding:"16px",borderRadius:99,background:copied?"#27ae60":C.green,border:"none",color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>
               {copied?"Copied to clipboard!":"Copy to clipboard"}
             </button>
+
+            {/* SAVE TO HISTORY — only for new SOWs */}
+            {!viewEntry && (
+              <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"16px"}}>
+                <div style={{fontSize:12,fontWeight:600,color:C.muted,marginBottom:10,letterSpacing:0.5,textTransform:"uppercase"}}>Save to history</div>
+                {saved ? (
+                  <div style={{display:"flex",alignItems:"center",gap:8,color:C.green,fontSize:14,fontWeight:600}}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Saved — {address}
+                  </div>
+                ) : (
+                  <div style={{display:"flex",gap:8}}>
+                    <input
+                      value={address}
+                      onChange={e=>setAddress(e.target.value)}
+                      onKeyDown={e=>e.key==="Enter"&&handleSave()}
+                      placeholder="Job address..."
+                      style={{flex:1,background:"#111",border:"1px solid #333",borderRadius:99,padding:"10px 16px",fontSize:14,color:"#eee",fontFamily:"inherit"}}
+                    />
+                    <button onClick={handleSave} disabled={!address.trim()}
+                      style={{background:address.trim()?C.green:"#222",border:"none",borderRadius:99,padding:"10px 20px",fontSize:13,fontWeight:700,color:address.trim()?"#fff":"#555",cursor:address.trim()?"pointer":"default",fontFamily:"inherit",transition:"background 0.15s"}}>
+                      Save
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
