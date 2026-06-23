@@ -1,17 +1,16 @@
 import { useState } from "react";
 
-// ── COLOURS — Major Industries ────────────────────────────────────────────────
 const C = {
-  bg:        "#f5f6f5",
-  white:     "#ffffff",
+  bg:        "#0f0f0f",
+  white:     "#1a1a1a",
   green:     "#5a9a3a",
   greenDark: "#3d6b27",
-  greenLight:"#eaf3e5",
-  border:    "#d4e4cb",
-  text:      "#1a2e12",
-  muted:     "#6b8560",
-  subtle:    "#f0f7ec",
-  red:       "#c0392b",
+  greenLight:"#1e3014",
+  border:    "#2a2a2a",
+  text:      "#f0f0f0",
+  muted:     "#888888",
+  subtle:    "#222222",
+  red:       "#e05252",
 };
 
 const SOW_ICONS = {
@@ -1606,18 +1605,24 @@ export default function SOWBuilder({ onBack }) {
       `}</style>
 
       {/* HEADER */}
-      <div style={{background:"#111111",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
+      <div style={{background:"#0f0f0f",borderBottom:"1px solid #222",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {screen!=="home" && <button onClick={screen==="result"?backToEdit:reset} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>}
+          {screen!=="home" && (
+            <button onClick={screen==="result"?backToEdit:reset}
+              style={{background:"#1a1a1a",border:"1px solid #333",color:"#aaa",borderRadius:99,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              Back
+            </button>
+          )}
           <div style={{display:"flex",alignItems:"center",gap:8}}>
-            <img src="/logo.svg" alt="" style={{width:30,height:30,objectFit:"contain"}} />
+            <img src="/logo.svg" alt="" style={{width:28,height:28,objectFit:"contain"}} />
             <div>
-              <div style={{fontSize:9,color:"rgba(255,255,255,0.45)",fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Major Industries</div>
+              <div style={{fontSize:9,color:"#5a9a3a",fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Major Industries</div>
               <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>{screen==="home"?"SOW Builder":cur?cur.label:"SOW Builder"}</div>
             </div>
           </div>
         </div>
-        {screen==="result"&&<button onClick={copy} style={{padding:"8px 18px",borderRadius:8,border:"none",background:copied?"#27ae60":C.green,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{copied?"✓ Copied!":"Copy"}</button>}
+        {screen==="result"&&<button onClick={copy} style={{padding:"8px 20px",borderRadius:99,border:"none",background:copied?"#27ae60":C.green,color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>{copied?"Copied!":"Copy"}</button>}
       </div>
 
       <div style={{maxWidth:600,margin:"0 auto",padding:"22px 16px"}}>
@@ -1625,18 +1630,20 @@ export default function SOWBuilder({ onBack }) {
         {/* HOME */}
         {screen==="home"&&(
           <div style={{animation:"fadein 0.3s ease"}}>
-            <div style={{fontSize:13,color:C.muted,marginBottom:20,fontWeight:500}}>Select the type of Scope of Work</div>
+            <div style={{fontSize:11,color:C.muted,marginBottom:16,fontWeight:600,letterSpacing:1,textTransform:"uppercase"}}>Select job type</div>
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {SOW_TYPES.map(t=>(
                 <button key={t.id} onClick={()=>{setType(t.id);setScreen("form");}}
-                  style={{background:C.white,border:"1px solid #e2ddd8",borderRadius:14,padding:"15px 16px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left",fontFamily:"inherit",transition:"border-color 0.15s",width:"100%"}}
+                  style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"16px 16px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left",fontFamily:"inherit",transition:"border-color 0.2s",width:"100%"}}
                   onMouseEnter={e=>e.currentTarget.style.borderColor=C.green}
-                  onMouseLeave={e=>e.currentTarget.style.borderColor="#e2ddd8"}>
-                  <div style={{width:42,height:42,borderRadius:12,background:"#111",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff"}}>
+                  onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}
+                  onTouchStart={e=>e.currentTarget.style.borderColor=C.green}
+                  onTouchEnd={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
+                  <div style={{width:44,height:44,borderRadius:13,background:"#1e3014",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:C.green}}>
                     {SOW_ICONS[t.id]}
                   </div>
                   <span style={{fontSize:15,fontWeight:600,color:C.text,flex:1}}>{t.label}</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               ))}
             </div>
@@ -1652,17 +1659,17 @@ export default function SOWBuilder({ onBack }) {
         {screen==="result"&&(
           <div style={{animation:"fadein 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:15,fontWeight:700,color:C.green}}>SOW Ready</div>
+              <div style={{fontSize:15,fontWeight:700,color:C.green,display:"flex",alignItems:"center",gap:6}}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>SOW Ready</div>
               <div style={{display:"flex",gap:8}}>
-                <button onClick={backToEdit} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
-                <button onClick={reset} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>New SOW</button>
+                <button onClick={backToEdit} style={{background:"#1a1a1a",border:"1px solid #333",color:"#ccc",borderRadius:99,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
+                <button onClick={reset} style={{background:"#1a1a1a",border:"1px solid #333",color:"#ccc",borderRadius:99,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>New SOW</button>
               </div>
             </div>
-            <div style={{background:C.white,border:"1.5px solid "+C.border,borderRadius:12,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:C.text,maxHeight:"62vh",overflowY:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
+            <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:"#ddd",maxHeight:"62vh",overflowY:"auto"}}>
               {result}
             </div>
-            <button onClick={copy} style={{width:"100%",marginTop:12,padding:"15px",borderRadius:12,background:copied?"#27ae60":C.green,border:"none",color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>
-              {copied?"✓ Copied to clipboard!":"Copy to clipboard"}
+            <button onClick={copy} style={{width:"100%",marginTop:12,padding:"16px",borderRadius:99,background:copied?"#27ae60":C.green,border:"none",color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit"}}>
+              {copied?"Copied to clipboard!":"Copy to clipboard"}
             </button>
           </div>
         )}
