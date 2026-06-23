@@ -1,12 +1,26 @@
 import { useState } from "react";
 
-const C = { bg:"#f5f6f5", white:"#ffffff", green:"#5a9a3a", greenDark:"#3d6b27", greenLight:"#eaf3e5", border:"#d4e4cb", text:"#1a2e12", muted:"#6b8560", subtle:"#f0f7ec", red:"#c0392b" };
+const C = { bg:"#f0ede8", white:"#ffffff", green:"#5a9a3a", greenDark:"#3d6b27", greenLight:"#eaf3e5", border:"#e2ddd8", text:"#111111", muted:"#888880", red:"#c0392b" };
+
+const CAT_ICONS = {
+  initial_inspection: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+  general_restoration: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+  mould_make_safe: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  mould_remediation: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+  contents_inventory: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>,
+  follow_up_monitoring: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+  fire_remediation: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>,
+  builders_clean: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  sewage: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  recommendations: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+  prv_cleaning: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
+};
 
 const CATEGORIES = [
   {
     id: "initial_inspection",
     label: "Initial Inspection",
-    icon: "🔍",
+    icon: null,
     phrases: [
       "Undertook a walkthrough safety inspection throughout all areas of the property.",
       "Full walkthrough inspection of the property to assess areas of damage.",
@@ -21,7 +35,7 @@ const CATEGORIES = [
   {
     id: "general_restoration",
     label: "General Restoration",
-    icon: "🔧",
+    icon: null,
     phrases: [
       "Relocation of contents for the duration of work.",
       "Uplift, removal and disposal of the affected carpet, underlay and smooth edging.",
@@ -40,7 +54,7 @@ const CATEGORIES = [
   {
     id: "mould_make_safe",
     label: "Mould Make Safe",
-    icon: "🛡️",
+    icon: null,
     phrases: [
       "Installation of Air Filtration Device (HEPA) to stabilise the environment.",
       "HEPA vacuum of all surfaces within the affected area.",
@@ -55,7 +69,7 @@ const CATEGORIES = [
   {
     id: "mould_remediation",
     label: "Mould Remediation",
-    icon: "☣️",
+    icon: null,
     phrases: [
       "Containment of contents for the duration of mould remediation works.",
       "Containment walls erected to isolate the affected area.",
@@ -76,7 +90,7 @@ const CATEGORIES = [
   {
     id: "contents_inventory",
     label: "Contents Inventory",
-    icon: "📦",
+    icon: null,
     phrases: [
       "Commencement of assessment of affected contents.",
       "Restorable items treated with antimicrobial to prevent mould growth and contamination.",
@@ -90,7 +104,7 @@ const CATEGORIES = [
   {
     id: "follow_up_monitoring",
     label: "Follow-up / Monitoring",
-    icon: "📊",
+    icon: null,
     phrases: [
       "Re-assessment of moisture levels in the affected areas.",
       "Check the correct function of mechanical drying equipment.",
@@ -106,7 +120,7 @@ const CATEGORIES = [
   {
     id: "fire_remediation",
     label: "Fire Remediation",
-    icon: "🔥",
+    icon: null,
     phrases: [
       "Installation of Air Filtration Devices (HEPA) to stabilise the environment.",
       "Cleaning and wet washing of affected areas including walls and ceilings.",
@@ -122,7 +136,7 @@ const CATEGORIES = [
   {
     id: "builders_clean",
     label: "Builder's Clean",
-    icon: "🧹",
+    icon: null,
     phrases: [
       "Removal of dust, dirt, and debris from all surfaces including floors, walls, ceilings, and windows.",
       "Cleaning and sanitising all fixtures including sinks, toilets, showers, and countertops.",
@@ -137,7 +151,7 @@ const CATEGORIES = [
   {
     id: "sewage",
     label: "Sewage Jobs",
-    icon: "⚠️",
+    icon: null,
     phrases: [
       "Containment of contents for the duration of works.",
       "Containment walls erected to isolate the affected area.",
@@ -155,7 +169,7 @@ const CATEGORIES = [
   {
     id: "recommendations",
     label: "Recommendations",
-    icon: "📋",
+    icon: null,
     phrases: [
       "Recommended removal of the affected section of the flooring and assessment and remediation of subfloor.",
       "Further works by Major Industries Restoration: Re-assessment of moisture levels in the affected areas. Check the correct function of mechanical drying equipment. Reposition / Removal of all mechanical drying equipment.",
@@ -170,7 +184,7 @@ const CATEGORIES = [
   {
     id: "prv_cleaning",
     label: "PRV Cleaning",
-    icon: "🏠",
+    icon: null,
     phrases: [
       "Strip-out of the walls up to 600mm to expose all affected structural elements for proper cleaning and drying.",
       "Remove all glue, nails, and any remaining debris from exposed surfaces.",
@@ -286,7 +300,7 @@ export default function ReportLikePro({ onBack }) {
                   position:"relative",
                 }}
               >
-                {cat.icon} {cat.label}
+                <span style={{display:"inline-flex",alignItems:"center",gap:6}}>{CAT_ICONS[cat.id]}{cat.label}</span>
                 {countInCat > 0 && (
                   <span style={{marginLeft:5,background:C.green,color:"#fff",borderRadius:10,padding:"1px 6px",fontSize:10,fontWeight:800}}>{countInCat}</span>
                 )}

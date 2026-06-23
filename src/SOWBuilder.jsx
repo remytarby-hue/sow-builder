@@ -14,15 +14,26 @@ const C = {
   red:       "#c0392b",
 };
 
+const SOW_ICONS = {
+  mould:               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>,
+  contents:            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
+  contents_relocation: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
+  stripout:            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+  flooring:            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>,
+  flood:               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  restoration:         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
+  drying:              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"/></svg>,
+};
+
 const SOW_TYPES = [
-  { id:"mould",              label:"Mould Remediation",      icon:"🍄" },
-  { id:"contents",           label:"Contents Remediation",   icon:"📦" },
-  { id:"contents_relocation",label:"Contents Relocation",    icon:"🚚" },
-  { id:"stripout",           label:"Strip Out",              icon:"🔨" },
-  { id:"flooring",           label:"Flooring Removal",       icon:"🪵" },
-  { id:"flood",              label:"Building and Contents / Large SOW", icon:"🏗️" },
-  { id:"restoration",        label:"Restoration Cleaning",   icon:"✨" },
-  { id:"drying",             label:"Drying",                 icon:"💨" },
+  { id:"mould",              label:"Mould Remediation",                    },
+  { id:"contents",           label:"Contents Remediation",                 },
+  { id:"contents_relocation",label:"Contents Relocation",                  },
+  { id:"stripout",           label:"Strip Out",                            },
+  { id:"flooring",           label:"Flooring Removal",                     },
+  { id:"flood",              label:"Building and Contents / Large SOW",    },
+  { id:"restoration",        label:"Restoration Cleaning",                 },
+  { id:"drying",             label:"Drying",                               },
 ];
 
 const WORKS_TEMPLATES = {
@@ -1618,12 +1629,14 @@ export default function SOWBuilder({ onBack }) {
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {SOW_TYPES.map(t=>(
                 <button key={t.id} onClick={()=>{setType(t.id);setScreen("form");}}
-                  style={{background:C.white,border:"1.5px solid "+C.border,borderRadius:12,padding:"16px 18px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left",fontFamily:"inherit",boxShadow:"0 1px 4px rgba(0,0,0,0.04)",transition:"border-color 0.15s,box-shadow 0.15s"}}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor=C.green;e.currentTarget.style.boxShadow="0 2px 10px rgba(90,154,58,0.15)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor=C.border;e.currentTarget.style.boxShadow="0 1px 4px rgba(0,0,0,0.04)";}}>
-                  <span style={{fontSize:26}}>{t.icon}</span>
-                  <span style={{fontSize:15,fontWeight:600,color:C.text}}>{t.label}</span>
-                  <span style={{marginLeft:"auto",color:C.green,fontSize:20,fontWeight:700}}>›</span>
+                  style={{background:C.white,border:"1px solid #e2ddd8",borderRadius:14,padding:"15px 16px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",textAlign:"left",fontFamily:"inherit",transition:"border-color 0.15s",width:"100%"}}
+                  onMouseEnter={e=>e.currentTarget.style.borderColor=C.green}
+                  onMouseLeave={e=>e.currentTarget.style.borderColor="#e2ddd8"}>
+                  <div style={{width:42,height:42,borderRadius:12,background:"#111",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff"}}>
+                    {SOW_ICONS[t.id]}
+                  </div>
+                  <span style={{fontSize:15,fontWeight:600,color:C.text,flex:1}}>{t.label}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.green} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               ))}
             </div>
@@ -1639,9 +1652,9 @@ export default function SOWBuilder({ onBack }) {
         {screen==="result"&&(
           <div style={{animation:"fadein 0.3s ease"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-              <div style={{fontSize:15,fontWeight:700,color:C.green}}>✓ SOW Ready</div>
+              <div style={{fontSize:15,fontWeight:700,color:C.green}}>SOW Ready</div>
               <div style={{display:"flex",gap:8}}>
-                <button onClick={backToEdit} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>✎ Edit</button>
+                <button onClick={backToEdit} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>Edit</button>
                 <button onClick={reset} style={{background:C.greenLight,border:"1.5px solid "+C.border,color:C.green,borderRadius:8,padding:"6px 13px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>New SOW</button>
               </div>
             </div>
