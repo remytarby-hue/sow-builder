@@ -1584,7 +1584,7 @@ export default function SOWBuilder({ onBack }) {
   };
 
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',Arial,sans-serif",color:C.text,paddingBottom:60}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',Arial,sans-serif",color:C.text,paddingBottom:90}}>
       <style>{`
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
         @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -1597,12 +1597,7 @@ export default function SOWBuilder({ onBack }) {
       {/* HEADER */}
       <div style={{background:"#111111",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {(screen==="home"&&onBack)
-            ? <button onClick={onBack} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Home</button>
-            : screen!=="home"
-              ? <button onClick={screen==="result"?backToEdit:reset} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>
-              : null
-          }
+          {screen!=="home" && <button onClick={screen==="result"?backToEdit:reset} style={{background:"rgba(255,255,255,0.1)",border:"1px solid rgba(255,255,255,0.2)",color:"#fff",borderRadius:8,padding:"6px 12px",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>← Back</button>}
           <div style={{display:"flex",alignItems:"center",gap:8}}>
             <img src="/logo.svg" alt="" style={{width:30,height:30,objectFit:"contain"}} />
             <div>
