@@ -339,7 +339,7 @@ export default function ReportLikePro({ onBack }) {
             {selectedCount > 0 ? <span style={{color:C.green,fontWeight:700}}>{selectedCount} selected</span> : `${phraseCount} phrases`}
           </div>
           <div style={{display:"flex",gap:8}}>
-            <button onClick={selectAll} style={{background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#ccc",borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Select all</button>
+            {!category.phrases.some(p => !isPhrase(p)) && <button onClick={selectAll} style={{background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#ccc",borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Select all</button>}
             {selectedCount > 0 && <button onClick={clearAll} style={{background:"#2a1010",border:"1px solid #4a2020",color:C.red,borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Clear</button>}
           </div>
         </div>
