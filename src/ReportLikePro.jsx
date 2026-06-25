@@ -14,7 +14,6 @@ const CAT_ICONS = {
   sewage: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
   recommendations: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
   prv_cleaning: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
-  mould_remediation_followup: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
 };
 
 const CATEGORIES = [
@@ -95,10 +94,29 @@ const CATEGORIES = [
     ]
   },
   {
-    id: "mould_remediation_followup",
-    label: "Mould Remediation Follow-up",
+    id: "follow_up_monitoring",
+    label: "Follow-up / Monitoring",
     icon: null,
     phrases: [
+      { section: "Drying completed" },
+      "Re-assessed moisture levels in all affected areas.",
+      "Inspected and confirmed the correct operation of all mechanical drying equipment.",
+      "Removed all mechanical drying equipment following confirmation of dry moisture readings.",
+      "Completed final walkthrough of all affected areas.",
+      { section: "Still wet" },
+      "Re-assessed moisture levels in all affected areas.",
+      "Inspected and confirmed the correct operation of all mechanical drying equipment.",
+      "Moisture levels had improved since the previous visit but remained elevated. Continued drying was recommended.",
+      "Repositioned mechanical drying equipment to improve drying efficiency across remaining affected areas.",
+      { section: "Partially removed equipment" },
+      "Re-assessed moisture levels in all affected areas.",
+      "Inspected and confirmed the correct operation of all mechanical drying equipment.",
+      "Partially removed mechanical drying equipment in areas that had returned to dry standard.",
+      "Repositioned remaining mechanical drying equipment to maintain drying efficiency.",
+      { section: "Swab testing" },
+      "Collected surface swab samples from affected areas for laboratory testing.",
+      "Surface swab results were received and confirmed levels were within acceptable thresholds.",
+      { section: "Mould Remediation Follow-up" },
       "Completed final HEPA vacuuming and sanitisation of the work area.",
       "Removed the Air Filtration Device upon completion of works.",
       "Inspected and confirmed the correct operation of all mechanical drying equipment.",
@@ -106,23 +124,6 @@ const CATEGORIES = [
       "Encapsulated affected timber framing and the back of plasterboard where required.",
       "Removed containment following successful completion of remediation works.",
       "Completed final walkthrough of the remediated area and confirmed works were complete.",
-    ]
-  },
-  {
-    id: "follow_up_monitoring",
-    label: "Follow-up / Monitoring",
-    icon: null,
-    phrases: [
-      "Re-assessed moisture levels in all affected areas.",
-      "Inspected and confirmed the correct operation of all mechanical drying equipment.",
-      "Removed all mechanical drying equipment following confirmation of dry moisture readings.",
-      "Completed final walkthrough of all affected areas.",
-      "Moisture levels had improved since the previous visit but remained elevated. Continued drying was recommended.",
-      "Repositioned mechanical drying equipment to improve drying efficiency across remaining affected areas.",
-      "Partially removed mechanical drying equipment in areas that had returned to dry standard.",
-      "Repositioned remaining mechanical drying equipment to maintain drying efficiency.",
-      "Collected surface swab samples from affected areas for laboratory testing.",
-      "Surface swab results were received and confirmed levels were within acceptable thresholds.",
     ]
   },
   {
@@ -241,15 +242,19 @@ export default function ReportLikePro({ onBack }) {
   const [copied, setCopied] = useState(false);
 
   const category = CATEGORIES.find(c => c.id === activeCategory);
+  const isPhrase = (p) => typeof p === "string";
   const selectedInCategory = Object.keys(selected).filter(k => k.startsWith(activeCategory + "|"));
   const selectedCount = selectedInCategory.length;
+  const phraseCount = category.phrases.filter(isPhrase).length;
 
   const togglePhrase = (catId, idx) => {
+    const phrase = CATEGORIES.find(c => c.id === catId).phrases[idx];
+    if (!isPhrase(phrase)) return;
     const key = catId + "|" + idx;
     setSelected(prev => {
       const next = {...prev};
       if (next[key]) delete next[key];
-      else next[key] = CATEGORIES.find(c => c.id === catId).phrases[idx];
+      else next[key] = phrase;
       return next;
     });
   };
@@ -257,7 +262,7 @@ export default function ReportLikePro({ onBack }) {
   const selectAll = () => {
     const next = {...selected};
     category.phrases.forEach((phrase, idx) => {
-      next[activeCategory + "|" + idx] = phrase;
+      if (isPhrase(phrase)) next[activeCategory + "|" + idx] = phrase;
     });
     setSelected(next);
   };
@@ -331,7 +336,7 @@ export default function ReportLikePro({ onBack }) {
       <div style={{padding:"16px 16px 20px",animation:"fadein 0.25s ease"}}>
         <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
           <div style={{fontSize:12,color:C.muted}}>
-            {selectedCount > 0 ? <span style={{color:C.green,fontWeight:700}}>{selectedCount} selected</span> : `${category.phrases.length} phrases`}
+            {selectedCount > 0 ? <span style={{color:C.green,fontWeight:700}}>{selectedCount} selected</span> : `${phraseCount} phrases`}
           </div>
           <div style={{display:"flex",gap:8}}>
             <button onClick={selectAll} style={{background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#ccc",borderRadius:99,padding:"5px 14px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Select all</button>
@@ -341,6 +346,13 @@ export default function ReportLikePro({ onBack }) {
 
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {category.phrases.map((phrase, idx) => {
+            if (!isPhrase(phrase)) {
+              return (
+                <div key={idx} style={{marginTop: idx === 0 ? 0 : 10, marginBottom:2, paddingBottom:6, borderBottom:"1px solid #2a2a2a"}}>
+                  <span style={{fontSize:10,fontWeight:700,color:C.green,letterSpacing:1.5,textTransform:"uppercase"}}>{phrase.section}</span>
+                </div>
+              );
+            }
             const key = activeCategory + "|" + idx;
             const isSelected = !!selected[key];
             return (
