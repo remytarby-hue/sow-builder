@@ -347,9 +347,34 @@ export default function ReportLikePro({ onBack }) {
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {category.phrases.map((phrase, idx) => {
             if (!isPhrase(phrase)) {
+              // find all phrase indices in this section (until next section or end)
+              const sectionPhraseIdxs = [];
+              for (let i = idx + 1; i < category.phrases.length; i++) {
+                if (!isPhrase(category.phrases[i])) break;
+                sectionPhraseIdxs.push(i);
+              }
+              const allSelected = sectionPhraseIdxs.length > 0 && sectionPhraseIdxs.every(i => !!selected[activeCategory + "|" + i]);
+              const selectSection = () => {
+                setSelected(prev => {
+                  const next = {...prev};
+                  sectionPhraseIdxs.forEach(i => { next[activeCategory + "|" + i] = category.phrases[i]; });
+                  return next;
+                });
+              };
+              const clearSection = () => {
+                setSelected(prev => {
+                  const next = {...prev};
+                  sectionPhraseIdxs.forEach(i => { delete next[activeCategory + "|" + i]; });
+                  return next;
+                });
+              };
               return (
-                <div key={idx} style={{marginTop: idx === 0 ? 0 : 10, marginBottom:2, paddingBottom:6, borderBottom:"1px solid #2a2a2a"}}>
+                <div key={idx} style={{marginTop: idx === 0 ? 0 : 14, marginBottom:2, paddingBottom:6, borderBottom:"1px solid #2a2a2a", display:"flex", alignItems:"center", justifyContent:"space-between"}}>
                   <span style={{fontSize:10,fontWeight:700,color:C.green,letterSpacing:1.5,textTransform:"uppercase"}}>{phrase.section}</span>
+                  <button onClick={allSelected ? clearSection : selectSection}
+                    style={{background:"transparent",border:"1px solid "+(allSelected ? "#4a2020" : "#2a2a2a"),color:allSelected ? C.red : C.muted,borderRadius:99,padding:"3px 10px",fontSize:10,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>
+                    {allSelected ? "Clear" : "Select all"}
+                  </button>
                 </div>
               );
             }
