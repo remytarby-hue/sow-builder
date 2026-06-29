@@ -3,8 +3,7 @@ import { useState, useRef, useEffect } from "react";
 const C = {
   bg: "#0f0f0f", card: "#1a1a1a", border: "#2a2a2a",
   green: "#5a9a3a", greenDim: "#1e3014", text: "#f0f0f0",
-  muted: "#888888", red: "#e05252", userBubble: "#1e3014",
-  aiBubble: "#1a1a1a",
+  muted: "#888888", red: "#e05252",
 };
 
 const SUGGESTIONS = [
@@ -23,15 +22,17 @@ export default function Assistant() {
   const bottomRef = useRef(null);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
   const sendMessage = async (text) => {
-    const userText = text || input.trim();
+    const userText = (text || input).trim();
     if (!userText || loading) return;
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "42px";
 
     const newMessages = [...messages, { role: "user", content: userText }];
     setMessages(newMessages);
@@ -83,37 +84,48 @@ export default function Assistant() {
     setRecording(false);
   };
 
-  const empty = messages.length === 0;
-
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "'Segoe UI',Arial,sans-serif", color: C.text, display: "flex", flexDirection: "column", paddingBottom: 80 }}>
+    <div style={{
+      position: "fixed",
+      top: 0, left: 0, right: 0,
+      bottom: "calc(58px + env(safe-area-inset-bottom))",
+      background: C.bg,
+      fontFamily: "'Segoe UI',Arial,sans-serif",
+      color: C.text,
+      display: "flex",
+      flexDirection: "column",
+    }}>
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+        @keyframes recpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+        textarea:focus{outline:none}
+      `}</style>
 
       {/* HEADER */}
-      <div style={{ background: "#0f0f0f", borderBottom: "1px solid #222", padding: "14px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <img src="/logo.svg" alt="" style={{ width: 28, height: 28, objectFit: "contain" }} />
+      <div style={{background:"#0f0f0f",borderBottom:"1px solid #222",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <img src="/logo.svg" alt="" style={{width:28,height:28,objectFit:"contain"}}/>
           <div>
-            <div style={{ fontSize: 9, color: C.green, fontWeight: 700, letterSpacing: 2, textTransform: "uppercase" }}>Major Industries</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#fff" }}>Restoration Assistant</div>
+            <div style={{fontSize:9,color:C.green,fontWeight:700,letterSpacing:2,textTransform:"uppercase"}}>Major Industries</div>
+            <div style={{fontSize:15,fontWeight:700,color:"#fff"}}>Restoration Assistant</div>
           </div>
         </div>
         {messages.length > 0 && (
           <button onClick={() => setMessages([])}
-            style={{ background: "transparent", border: "1px solid #333", color: C.muted, borderRadius: 99, padding: "5px 12px", fontSize: 11, cursor: "pointer", fontFamily: "inherit" }}>
+            style={{background:"transparent",border:"1px solid #333",color:C.muted,borderRadius:99,padding:"5px 12px",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>
             Clear
           </button>
         )}
       </div>
 
-      {/* MESSAGES */}
-      <div style={{ flex: 1, padding: "16px 16px 8px", display: "flex", flexDirection: "column", gap: 12 }}>
-
-        {empty && (
-          <div style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 13, color: C.muted, marginBottom: 14 }}>Ask me anything about restoration, or try one of these:</div>
+      {/* MESSAGES — scrollable */}
+      <div style={{flex:1,overflowY:"auto",padding:"16px 16px 8px",display:"flex",flexDirection:"column",gap:12,WebkitOverflowScrolling:"touch"}}>
+        {messages.length === 0 && (
+          <div>
+            <div style={{fontSize:13,color:C.muted,marginBottom:14}}>Ask me anything about restoration, or try one of these:</div>
             {SUGGESTIONS.map((s, i) => (
               <button key={i} onClick={() => sendMessage(s)}
-                style={{ display: "block", width: "100%", textAlign: "left", background: C.card, border: "1px solid " + C.border, borderRadius: 12, padding: "12px 14px", marginBottom: 8, fontSize: 13, color: "#ccc", cursor: "pointer", fontFamily: "inherit", lineHeight: 1.5 }}>
+                style={{display:"block",width:"100%",textAlign:"left",background:C.card,border:"1px solid "+C.border,borderRadius:12,padding:"12px 14px",marginBottom:8,fontSize:13,color:"#ccc",cursor:"pointer",fontFamily:"inherit",lineHeight:1.5}}>
                 {s}
               </button>
             ))}
@@ -121,13 +133,14 @@ export default function Assistant() {
         )}
 
         {messages.map((m, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+          <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start"}}>
             <div style={{
-              maxWidth: "85%", padding: "12px 16px", borderRadius: m.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-              background: m.role === "user" ? C.greenDim : C.card,
-              border: "1px solid " + (m.role === "user" ? C.green : C.border),
-              fontSize: 14, lineHeight: 1.7, color: m.role === "user" ? "#e0f0d8" : C.text,
-              whiteSpace: "pre-wrap",
+              maxWidth:"85%",padding:"12px 16px",
+              borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
+              background:m.role==="user"?C.greenDim:C.card,
+              border:"1px solid "+(m.role==="user"?C.green:C.border),
+              fontSize:14,lineHeight:1.7,color:m.role==="user"?"#e0f0d8":C.text,
+              whiteSpace:"pre-wrap",
             }}>
               {m.content}
             </div>
@@ -135,49 +148,46 @@ export default function Assistant() {
         ))}
 
         {loading && (
-          <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ background: C.card, border: "1px solid " + C.border, borderRadius: "18px 18px 18px 4px", padding: "12px 18px", display: "flex", gap: 5, alignItems: "center" }}>
-              {[0, 1, 2].map(i => (
-                <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: C.green, animation: "pulse 1.2s ease infinite", animationDelay: `${i * 0.2}s` }} />
+          <div style={{display:"flex",justifyContent:"flex-start"}}>
+            <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:"18px 18px 18px 4px",padding:"14px 18px",display:"flex",gap:5,alignItems:"center"}}>
+              {[0,1,2].map(i=>(
+                <div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.green,animation:"pulse 1.2s ease infinite",animationDelay:`${i*0.2}s`}}/>
               ))}
             </div>
           </div>
         )}
-
-        <div ref={bottomRef} />
+        <div ref={bottomRef}/>
       </div>
 
-      {/* INPUT */}
-      <div style={{ position: "fixed", bottom: 68, left: 0, right: 0, background: "rgba(15,15,15,0.97)", borderTop: "1px solid #222", padding: "10px 12px", backdropFilter: "blur(10px)", zIndex: 20 }}>
-        <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}} @keyframes recpulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}`}</style>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+      {/* INPUT BAR — stuck to bottom of the fixed container */}
+      <div style={{background:"#0f0f0f",borderTop:"1px solid #222",padding:"10px 12px",flexShrink:0}}>
+        {recording && <div style={{textAlign:"center",fontSize:11,color:C.red,marginBottom:6,fontWeight:600}}>Recording... release to stop</div>}
+        {transcribing && <div style={{textAlign:"center",fontSize:11,color:C.muted,marginBottom:6}}>Transcribing...</div>}
+        <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
           <textarea
-            value={transcribing ? "Transcribing..." : input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+            ref={textareaRef}
+            value={transcribing?"Transcribing...":input}
+            onChange={e=>{setInput(e.target.value);e.target.style.height="42px";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}}
             placeholder="Ask anything about restoration..."
-            rows={1}
-            style={{
-              flex: 1, background: "#1a1a1a", border: "1px solid #333", borderRadius: 14,
-              padding: "10px 14px", fontSize: 14, color: "#eee", fontFamily: "inherit",
-              resize: "none", outline: "none", lineHeight: 1.5, maxHeight: 120, overflowY: "auto",
-            }}
-            onInput={e => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px"; }}
             disabled={transcribing}
+            style={{
+              flex:1,background:"#1a1a1a",border:"1px solid #333",borderRadius:14,
+              padding:"10px 14px",fontSize:14,color:"#eee",fontFamily:"inherit",
+              resize:"none",lineHeight:1.5,height:42,maxHeight:120,overflowY:"auto",
+            }}
           />
 
-          {/* MIC BUTTON */}
           <button
             onPointerDown={startRecording}
             onPointerUp={stopRecording}
             onPointerLeave={stopRecording}
             style={{
-              width: 44, height: 44, borderRadius: "50%", border: "none", flexShrink: 0,
-              background: recording ? C.red : "#222",
-              color: recording ? "#fff" : C.muted,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", animation: recording ? "recpulse 0.8s ease infinite" : "none",
-              transition: "background 0.15s",
+              width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,
+              background:recording?C.red:"#222",color:recording?"#fff":C.muted,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              cursor:"pointer",animation:recording?"recpulse 0.8s ease infinite":"none",
+              transition:"background 0.15s",
             }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -187,16 +197,15 @@ export default function Assistant() {
             </svg>
           </button>
 
-          {/* SEND BUTTON */}
-          <button onClick={() => sendMessage()}
-            disabled={!input.trim() || loading}
+          <button onClick={()=>sendMessage()}
+            disabled={!input.trim()||loading}
             style={{
-              width: 44, height: 44, borderRadius: "50%", border: "none", flexShrink: 0,
-              background: input.trim() && !loading ? C.green : "#222",
-              color: input.trim() && !loading ? "#fff" : "#444",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: input.trim() && !loading ? "pointer" : "default",
-              transition: "background 0.15s",
+              width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,
+              background:input.trim()&&!loading?C.green:"#222",
+              color:input.trim()&&!loading?"#fff":"#444",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              cursor:input.trim()&&!loading?"pointer":"default",
+              transition:"background 0.15s",
             }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="22" y1="2" x2="11" y2="13"/>
@@ -204,8 +213,6 @@ export default function Assistant() {
             </svg>
           </button>
         </div>
-        {recording && <div style={{ textAlign: "center", fontSize: 11, color: C.red, marginTop: 6, fontWeight: 600 }}>Recording... release to send</div>}
-        {transcribing && <div style={{ textAlign: "center", fontSize: 11, color: C.muted, marginTop: 6 }}>Transcribing...</div>}
       </div>
     </div>
   );
