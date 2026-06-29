@@ -99,10 +99,11 @@ export default function Assistant() {
 
   return (
     <div style={{
-      position:"fixed", top:0, left:0, right:0,
+      position:"fixed", top:"env(safe-area-inset-top)", left:0, right:0,
       bottom:"calc(58px + env(safe-area-inset-bottom))",
       background:C.bg, fontFamily:"'Segoe UI',Arial,sans-serif",
       color:C.text, display:"flex", flexDirection:"column",
+      overflowX:"hidden",
     }}>
       <style>{`
         @keyframes dots{0%,100%{opacity:.3}50%{opacity:1}}
@@ -129,7 +130,7 @@ export default function Assistant() {
       </div>
 
       {/* MESSAGES */}
-      <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch"}}>
+      <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"16px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch",touchAction:"pan-y",overscrollBehavior:"contain"}}>
 
         {messages.length === 0 && !loading && (
           <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
