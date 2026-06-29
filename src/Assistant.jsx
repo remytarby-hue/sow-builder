@@ -99,7 +99,7 @@ export default function Assistant() {
 
   return (
     <div style={{
-      position:"fixed", top:"env(safe-area-inset-top)", left:0, right:0,
+      position:"fixed", top:0, left:0, right:0,
       bottom:"calc(64px + env(safe-area-inset-bottom))",
       background:C.bg, fontFamily:"'Segoe UI',Arial,sans-serif",
       color:C.text, display:"flex", flexDirection:"column",
@@ -113,7 +113,7 @@ export default function Assistant() {
       `}</style>
 
       {/* HEADER */}
-      <div style={{background:"#0f0f0f",borderBottom:"1px solid #1a1a1a",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
+      <div style={{background:"#0f0f0f",borderBottom:"1px solid #1a1a1a",padding:"14px 20px",paddingTop:"calc(env(safe-area-inset-top) + 14px)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <img src="/logo.svg" alt="" style={{width:28,height:28,objectFit:"contain"}}/>
           <div>
