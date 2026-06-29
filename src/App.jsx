@@ -1,6 +1,7 @@
 import { useState } from "react";
 import SOWBuilder from "./SOWBuilder";
 import ReportLikePro from "./ReportLikePro";
+import Assistant from "./Assistant";
 
 export const D = {
   bg:       "#0f0f0f",
@@ -22,6 +23,8 @@ function BottomNav({ screen, setScreen }) {
       icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a?"#5a9a3a":"#666"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
     { id:"report", label:"Report",
       icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a?"#5a9a3a":"#666"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> },
+    { id:"assistant", label:"Assistant",
+      icon: (a) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a?"#5a9a3a":"#666"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> },
   ];
   return (
     <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#0f0f0f",borderTop:"1px solid #222",display:"flex",zIndex:100,paddingBottom:"env(safe-area-inset-bottom)"}}>
@@ -56,11 +59,17 @@ function HomeScreen({ setScreen }) {
       desc: "Select phrases, copy them all, paste straight into your report.",
       icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5a9a3a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,
     },
+    {
+      id: "assistant",
+      label: "Restoration Assistant",
+      sub: "AI-Powered",
+      desc: "Ask questions, get observations written, draft notes for assessors.",
+      icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5a9a3a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+    },
   ];
 
   return (
     <div style={{minHeight:"100vh",background:D.bg,color:D.text,fontFamily:"'Segoe UI',Arial,sans-serif",paddingBottom:80}}>
-      {/* HEADER */}
       <div style={{padding:"28px 20px 32px",borderBottom:"1px solid "+D.border}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
           <img src="/logo.svg" alt="Major Industries" style={{width:40,height:40,objectFit:"contain"}}/>
@@ -73,7 +82,6 @@ function HomeScreen({ setScreen }) {
         <div style={{fontSize:30,fontWeight:800,color:D.white,letterSpacing:-1,lineHeight:1.1}}>Restorer<br/>Assistant</div>
       </div>
 
-      {/* TOOLS */}
       <div style={{padding:"24px 16px",display:"flex",flexDirection:"column",gap:12}}>
         <div style={{fontSize:11,fontWeight:600,color:D.muted,letterSpacing:1.5,textTransform:"uppercase",marginBottom:4}}>Your tools</div>
         {tools.map(t => (
@@ -105,9 +113,10 @@ export default function App() {
   return (
     <div style={{fontFamily:"'Segoe UI',Arial,sans-serif",background:"#0f0f0f",minHeight:"100vh"}}>
       <style>{`* { box-sizing:border-box; } button { -webkit-tap-highlight-color:transparent; }`}</style>
-      {screen === "home"   && <HomeScreen setScreen={setScreen} />}
-      {screen === "sow"    && <SOWBuilder />}
-      {screen === "report" && <ReportLikePro />}
+      {screen === "home"      && <HomeScreen setScreen={setScreen} />}
+      {screen === "sow"       && <SOWBuilder />}
+      {screen === "report"    && <ReportLikePro />}
+      {screen === "assistant" && <Assistant />}
       <BottomNav screen={screen} setScreen={setScreen} />
     </div>
   );
