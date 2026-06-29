@@ -100,7 +100,7 @@ export default function Assistant() {
   return (
     <div style={{
       position:"fixed", top:"env(safe-area-inset-top)", left:0, right:0,
-      bottom:"calc(58px + env(safe-area-inset-bottom))",
+      bottom:"calc(64px + env(safe-area-inset-bottom))",
       background:C.bg, fontFamily:"'Segoe UI',Arial,sans-serif",
       color:C.text, display:"flex", flexDirection:"column",
       overflowX:"hidden",
