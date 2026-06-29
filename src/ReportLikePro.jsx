@@ -76,24 +76,6 @@ const CATEGORIES = [
     ]
   },
   {
-    id: "mould_remediation",
-    label: "Mould Remediation",
-    icon: null,
-    phrases: [
-      "Undertook a walkthrough safety inspection throughout all accessible areas of the property.",
-      "Completed a full walkthrough inspection to assess the affected areas and visible microbial activity.",
-      "Installed containment walls to isolate the affected area.",
-      "Installed zip doors to control access and minimise cross-contamination.",
-      "Established negative air pressure using Air Filtration Devices (AFDs).",
-      "Removed and disposed of contaminated materials affected by microbial activity.",
-      "HEPA vacuumed affected surfaces, including plasterboard walls, plasterboard ceilings, timber framing, concrete subfloor, and other exposed materials as required.",
-      "Applied antimicrobial solution to affected surfaces.",
-      "Completed abrasive cleaning to affected surfaces where required.",
-      "Collected moisture readings from affected areas.",
-      "Installed mechanical drying equipment where elevated moisture was present.",
-    ]
-  },
-  {
     id: "follow_up_monitoring",
     label: "Follow-up / Monitoring",
     icon: null,
@@ -124,6 +106,40 @@ const CATEGORIES = [
       "Encapsulated affected timber framing and the back of plasterboard where required.",
       "Removed containment following successful completion of remediation works.",
       "Completed final walkthrough of the remediated area and confirmed works were complete.",
+    ]
+  },
+  {
+    id: "mould_remediation",
+    label: "Mould Remediation",
+    icon: null,
+    phrases: [
+      "Undertook a walkthrough safety inspection throughout all accessible areas of the property.",
+      "Completed a full walkthrough inspection to assess the affected areas and visible microbial activity.",
+      "Installed containment walls to isolate the affected area.",
+      "Installed zip doors to control access and minimise cross-contamination.",
+      "Established negative air pressure using Air Filtration Devices (AFDs).",
+      "Removed and disposed of contaminated materials affected by microbial activity.",
+      "HEPA vacuumed affected surfaces, including plasterboard walls, plasterboard ceilings, timber framing, concrete subfloor, and other exposed materials as required.",
+      "Applied antimicrobial solution to affected surfaces.",
+      "Completed abrasive cleaning to affected surfaces where required.",
+      "Collected moisture readings from affected areas.",
+      "Installed mechanical drying equipment where elevated moisture was present.",
+    ]
+  },
+  {
+    id: "contents_inventory",
+    label: "Contents Inventory",
+    icon: null,
+    phrases: [
+      "Undertook a walkthrough safety inspection throughout all accessible areas of the property.",
+      "Completed a full walkthrough inspection to assess affected contents.",
+      "Liaised with the insured regarding affected and non-restorable items.",
+      "Commenced assessment of affected contents.",
+      "Treated restorable items with antimicrobial solution to reduce the risk of mould growth and contamination.",
+      "Added non-restorable contents to an inventory.",
+      "Tested and tagged electronic devices where required to confirm safety and functionality.",
+      "Removed and disposed of non-restorable contents where approved.",
+      "Completed final walkthrough.",
     ]
   },
   {
@@ -216,22 +232,6 @@ const CATEGORIES = [
       "It is recommended that affected flooring be removed to allow full assessment and remediation of the subfloor.",
       "It is recommended that affected wall linings be removed to expose the wall cavity for further assessment, drying, and remediation.",
       "It is recommended that a qualified builder be engaged to carry out reinstatement works following completion of our scope.",
-    ]
-  },
-  {
-    id: "contents_inventory",
-    label: "Contents Inventory",
-    icon: null,
-    phrases: [
-      "Undertook a walkthrough safety inspection throughout all accessible areas of the property.",
-      "Completed a full walkthrough inspection to assess affected contents.",
-      "Liaised with the insured regarding affected and non-restorable items.",
-      "Commenced assessment of affected contents.",
-      "Treated restorable items with antimicrobial solution to reduce the risk of mould growth and contamination.",
-      "Added non-restorable contents to an inventory.",
-      "Tested and tagged electronic devices where required to confirm safety and functionality.",
-      "Removed and disposed of non-restorable contents where approved.",
-      "Completed final walkthrough.",
     ]
   },
 ];
