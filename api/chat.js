@@ -114,7 +114,36 @@ When asked to write a Restoration Observation, produce a concise, professional s
 
 A Restoration Observation is NOT a Scope of Work, recommendation, site diary, or moisture monitoring note. It is a factual summary of damage identified during the assessment.
 
-Keep it concise — typically one to four short paragraphs — written in objective Australian insurance restoration language. Never state assumptions as facts.`,
+Keep it concise — typically one to four short paragraphs — written in objective Australian insurance restoration language. Never state assumptions as facts.
+
+---
+
+REAL EXAMPLES OF EXPECTED OUTPUT:
+
+Example — proofreading/correction:
+Input: "The underlying material may contain asbestos. A sample was collected and Will be submit for testing..."
+Output: "The underlying material may contain asbestos. A sample was collected and will be submitted for testing to confirm whether asbestos is present before any further works are undertaken."
+
+Example — Restoration Observation (poor property, dry mould):
+Output: "At the time of attendance, the property was observed to be in a generally poor condition, with visible dirt, staining, and a lack of general maintenance throughout wall, ceiling, and floor surfaces.\n\nSurface mould growth was identified throughout the affected areas. At the time of inspection, all moisture readings were within the dry standard.\n\nBased on the condition of the property, the surface mould growth appears likely to have developed over time as a result of poor housekeeping and general lack of maintenance. It is possible that the elevated moisture levels associated with the reported water damage event further exacerbated the existing mould growth."
+
+Example — Restoration Observation (burst pipe, adjacent unit, trapped moisture):
+Output: "Based on information provided onsite, a burst pipe within the neighbouring unit reportedly allowed water to migrate through the adjoining wall and affect the flooring within the subject unit.\n\nThe floor covering was observed to be visibly water damaged, with sections showing swelling, lifting, and distortion. Elevated moisture levels were recorded within the affected flooring.\n\nBased on the moisture patterns and visible condition of the floor covering, it is believed that moisture may be trapped beneath the flooring material."
+
+Example — Site Note (power outlets not isolated):
+Output: "The power outlets within Studio 1 and Studio 2 remain in place and have not yet been isolated as outlined in the Scope of Works.\n\nThe outlets will need to be isolated and made safe before remediation and restoration works can proceed within the affected areas."
+
+Example — Site Note (dehumidifier collection, no access):
+Output: "Site attended to collect the dehumidifiers previously installed.\n\nNo moisture reassessment was carried out, as the insured had left the dehumidifiers outside the property for collection and was not present onsite to provide access to the affected areas."
+
+Example — Site Note (wall cavity, mould found):
+Output: "Following inspection of the wall cavity within the stairwell, visible mould contamination was identified.\n\nBased on these findings, we recommend removal of the affected section of wall to facilitate appropriate mould remediation and access to affected materials within the cavity."
+
+Example — Restoration Observation (washing machine supply leak):
+Output: "Based on information provided onsite, a leak from the washing machine water supply connection within the laundry area allowed water to migrate through the adjacent wall and affect the carpeted area.\n\nThe carpet was assessed and determined to be non-restorable due to mould contamination, strong odour, and staining.\n\nThe affected carpet was removed throughout the room. A dehumidifier was installed to facilitate drying of the subfloor prior to reinstatement of the floor coverings."
+
+Example — Client SMS:
+Output: "Hi, this is Remy from Major Industries Restoration.\n\nI'm running ahead of schedule today and could be at your property around 2:00 PM instead of 3:30 PM.\n\nI just wanted to check if someone will be home at that time.\n\nThank you."`,
       messages,
     }),
   });
