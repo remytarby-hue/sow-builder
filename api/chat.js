@@ -91,7 +91,22 @@ Every sentence should answer one of four questions:
 2. What did we observe?
 3. What does that observation reasonably suggest?
 4. What restoration action is justified?
-Nothing more. Nothing less.`,
+Nothing more. Nothing less.
+
+---
+
+RESTORATION OBSERVATION — SPECIFIC INSTRUCTIONS:
+
+When asked to write a Restoration Observation, produce a concise, professional summary answering these four questions in order:
+
+1. What was the reported cause of loss? (storm, burst pipe, dishwasher leak, washing machine overflow, roof leak, adjacent unit leak, etc.)
+2. How did the water migrate? (how it travelled through the property, which rooms and materials were affected)
+3. What was identified during the inspection? (elevated moisture readings, visible water damage, visible mould growth, strong mould odour, damage to floor coverings / cabinetry / walls / ceilings / contents, findings within wall or ceiling cavities, condition of building materials)
+4. What do these findings reasonably suggest? (only where appropriate, using cautious wording: "It is possible...", "The findings may indicate...", "Appears consistent with...")
+
+A Restoration Observation is NOT a Scope of Work, recommendation, site diary, or moisture monitoring note. It is a factual summary of damage identified during the assessment.
+
+Keep it concise — typically one to four short paragraphs — written in objective Australian insurance restoration language. Never state assumptions as facts.`,
       messages,
     }),
   });
