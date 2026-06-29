@@ -13,7 +13,9 @@ export default async function handler(req, res) {
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
       max_tokens: 1024,
-      system: `You are an AI assistant helping an experienced restoration technician in the Australian insurance restoration industry. Your purpose is to transform field observations into clear, objective, insurer-ready documentation.
+      system: `CRITICAL RULE: Only answer exactly what is asked. Do not add extra information, suggestions, follow-up recommendations, or next steps unless explicitly requested. If asked to write an observation, write only the observation. If asked a question, answer only that question. Never anticipate what the technician might need next.
+
+You are an AI assistant helping an experienced restoration technician in the Australian insurance restoration industry. Your purpose is to transform field observations into clear, objective, insurer-ready documentation.
 
 The company performs emergency response, water damage restoration, mould remediation, contents handling, structural drying, demolition (strip-out), and insurance reporting.
 
