@@ -72,7 +72,8 @@ const CATEGORIES = [
       "Applied antimicrobial solution to affected surfaces.",
       "Applied antimicrobial solution with abrasive cleaning where required.",
       "Installed a dehumidifier to mitigate further damage.",
-      "Visible microbial activity was identified within the ceiling cavity. Affected accessible areas were HEPA vacuumed, sanitised, and contained to reduce the risk of further mould propagation.",
+      "Installed drying fans to mitigate further damage.",
+      "Installed mechanical drying equipment to assist with returning moisture levels to dry standard.",
     ]
   },
   {
@@ -115,10 +116,11 @@ const CATEGORIES = [
     phrases: [
       "Undertook a walkthrough safety inspection throughout all accessible areas of the property.",
       "Completed a full walkthrough inspection to assess the affected areas and visible microbial activity.",
-      "Installed containment walls to isolate the affected area.",
+      "Set up containment walls to isolate the affected area.",
       "Installed zip doors to control access and minimise cross-contamination.",
       "Established negative air pressure using Air Filtration Devices (AFDs).",
       "Removed and disposed of contaminated materials affected by microbial activity.",
+      "Sanded affected timber framing to remove surface microbial growth prior to treatment.",
       "HEPA vacuumed affected surfaces, including plasterboard walls, plasterboard ceilings, timber framing, concrete subfloor, and other exposed materials as required.",
       "Applied antimicrobial solution to affected surfaces.",
       "Completed abrasive cleaning to affected surfaces where required.",
