@@ -194,7 +194,7 @@ export default function Assistant() {
             disabled={transcribing}
             style={{
               flex:1,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:22,
-              padding:"10px 16px",fontSize:14,color:"#eee",fontFamily:"inherit",
+              padding:"10px 16px",fontSize:16,color:"#eee",fontFamily:"inherit",
               resize:"none",lineHeight:1.5,height:42,maxHeight:120,overflowY:"auto",
               transition:"border-color 0.15s",
             }}

@@ -112,7 +112,7 @@ export default function App() {
   const [screen, setScreen] = useState("home");
   return (
     <div style={{fontFamily:"'Segoe UI',Arial,sans-serif",background:"#0f0f0f",minHeight:"100vh",paddingTop:"env(safe-area-inset-top)"}}>
-      <style>{`* { box-sizing:border-box; } button { -webkit-tap-highlight-color:transparent; }`}</style>
+      <style>{`* { box-sizing:border-box; } button { -webkit-tap-highlight-color:transparent; } html, body { overflow-x:hidden; max-width:100vw; }`}</style>
       {screen === "home"      && <HomeScreen setScreen={setScreen} />}
       {screen === "sow"       && <SOWBuilder />}
       {screen === "report"    && <ReportLikePro />}
