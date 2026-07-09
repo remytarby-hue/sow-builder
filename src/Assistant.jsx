@@ -6,12 +6,77 @@ const C = {
   muted: "#666", red: "#e05252",
 };
 
+function InputBar({ input, setInput, loading, recording, transcribing, textareaRef, onSend, onToggleRecording, autoResize, compact }) {
+  return (
+    <div style={{background: compact ? "transparent" : "#0f0f0f", borderTop: compact ? "none" : "1px solid #1a1a1a", padding: compact ? "0" : "10px 12px", width:"100%"}}>
+      {(recording || transcribing) && (
+        <div style={{textAlign:"center",fontSize:11,marginBottom:6,fontWeight:600,color:recording?C.red:C.muted}}>
+          {recording ? "● Recording — tap mic to stop" : "Transcribing..."}
+        </div>
+      )}
+      <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+        <textarea
+          ref={textareaRef}
+          value={input}
+          onChange={e=>{setInput(e.target.value);autoResize();}}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();onSend();}}}
+          placeholder={transcribing?"Transcribing...":"Message..."}
+          disabled={transcribing}
+          style={{
+            flex:1,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:22,
+            padding:"10px 16px",fontSize:16,color:"#eee",fontFamily:"inherit",
+            resize:"none",lineHeight:1.5,height:42,maxHeight:120,overflowY:"auto",
+            transition:"border-color 0.15s",
+          }}
+        />
+        <button onClick={onToggleRecording}
+          disabled={transcribing||loading}
+          style={{
+            width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,
+            background:recording?"#1a0a0a":"#1a1a1a",
+            color:recording?C.red:C.muted,
+            display:"flex",alignItems:"center",justifyContent:"center",
+            cursor:transcribing||loading?"default":"pointer",
+            animation:recording?"recpulse 1s ease infinite":"none",
+            transition:"background 0.15s, color 0.15s",
+          }}>
+          {recording
+            ? <svg width="16" height="16" viewBox="0 0 24 24" fill={C.red} stroke="none"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
+            : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+          }
+        </button>
+        <button onClick={onSend}
+          disabled={!input.trim()||loading}
+          style={{
+            width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,
+            background:input.trim()&&!loading?C.green:"#1a1a1a",
+            color:input.trim()&&!loading?"#fff":"#333",
+            display:"flex",alignItems:"center",justifyContent:"center",
+            cursor:input.trim()&&!loading?"pointer":"default",
+            transition:"background 0.15s",
+          }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function Assistant() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [recording, setRecording] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
+  const [copied, setCopied] = useState(null);
   const bottomRef = useRef(null);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
@@ -53,15 +118,19 @@ export default function Assistant() {
     setLoading(false);
   };
 
+  const copyMessage = (text, i) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(i);
+      setTimeout(() => setCopied(null), 2000);
+    });
+  };
+
   const toggleRecording = async () => {
     if (transcribing || loading) return;
-
     if (recording) {
-      // Stop
       mediaRef.current?.stop();
       setRecording(false);
     } else {
-      // Start
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mime = ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg"]
@@ -97,6 +166,8 @@ export default function Assistant() {
     }
   };
 
+  const isEmpty = messages.length === 0 && !loading;
+
   return (
     <div style={{
       position:"fixed", top:0, left:0, right:0, bottom:0,
@@ -130,125 +201,94 @@ export default function Assistant() {
         )}
       </div>
 
-      {/* MESSAGES */}
-      <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"16px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch",touchAction:"pan-y",overscrollBehavior:"contain"}}>
-
-        {messages.length === 0 && !loading && (
-          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,padding:"0 32px"}}>
-            <div style={{width:64,height:64,borderRadius:"50%",background:C.greenDim,border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              <img src="/logo.svg" alt="" style={{width:36,height:36,objectFit:"contain"}}/>
-            </div>
-            <div style={{textAlign:"center"}}>
-              <div style={{fontSize:18,fontWeight:700,color:"#fff",marginBottom:10}}>Restoration Assistant</div>
-              <div style={{fontSize:13,color:"#555",lineHeight:2}}>
-                Restoration Observation · Site Note<br/>
-                Technical question · Client message
-              </div>
-              <div style={{fontSize:13,color:"#3d6b27",fontStyle:"italic",marginTop:12}}>Ask and you shall receive.</div>
-            </div>
+      {/* EMPTY STATE — centered with input below */}
+      {isEmpty && (
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"0 24px",gap:24}}>
+          <div style={{width:64,height:64,borderRadius:"50%",background:C.greenDim,border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <img src="/logo.svg" alt="" style={{width:36,height:36,objectFit:"contain"}}/>
           </div>
-        )}
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:18,fontWeight:700,color:"#fff",marginBottom:10}}>Restoration Assistant</div>
+            <div style={{fontSize:13,color:"#555",lineHeight:2}}>
+              Restoration Observation · Site Note<br/>
+              Technical question · Client message
+            </div>
+            <div style={{fontSize:13,color:"#3d6b27",fontStyle:"italic",marginTop:10}}>Ask and you shall receive.</div>
+          </div>
+          <div style={{width:"100%",maxWidth:480}}>
+            <InputBar
+              input={input} setInput={setInput} loading={loading}
+              recording={recording} transcribing={transcribing}
+              textareaRef={textareaRef} onSend={send}
+              onToggleRecording={toggleRecording} autoResize={autoResize}
+              compact
+            />
+          </div>
+        </div>
+      )}
 
-        {messages.map((m, i) => (
-          <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",animation:"fadein 0.25s ease"}}>
-            {m.role === "assistant" && (
-              <div style={{width:28,height:28,borderRadius:"50%",background:C.greenDim,border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginRight:8,marginTop:2}}>
+      {/* MESSAGES */}
+      {!isEmpty && (
+        <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"16px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch",touchAction:"pan-y",overscrollBehavior:"contain"}}>
+          {messages.map((m, i) => (
+            <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",animation:"fadein 0.25s ease"}}>
+              {m.role === "assistant" && (
+                <div style={{width:28,height:28,borderRadius:"50%",background:C.greenDim,border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginRight:8,marginTop:2}}>
+                  <img src="/logo.svg" alt="" style={{width:16,height:16,objectFit:"contain"}}/>
+                </div>
+              )}
+              <div style={{display:"flex",flexDirection:"column",alignItems:m.role==="user"?"flex-end":"flex-start",maxWidth:"80%",gap:4}}>
+                <div style={{
+                  padding:"12px 16px",
+                  borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
+                  background:m.role==="user"?C.greenDim:C.card,
+                  border:"1px solid "+(m.role==="user"?C.green:C.border),
+                  fontSize:14,lineHeight:1.75,
+                  color:m.role==="user"?"#e0f0d8":C.text,
+                  whiteSpace:"pre-wrap",
+                }}>
+                  {m.content}
+                </div>
+                {m.role === "assistant" && (
+                  <button onClick={() => copyMessage(m.content, i)}
+                    style={{background:"transparent",border:"none",cursor:"pointer",padding:"2px 4px",display:"flex",alignItems:"center",gap:4,color:copied===i?C.green:C.muted,fontSize:11,fontFamily:"inherit",transition:"color 0.15s"}}>
+                    {copied===i
+                      ? <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copied</>
+                      : <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy</>
+                    }
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div style={{display:"flex",alignItems:"center",gap:8,animation:"fadein 0.2s ease"}}>
+              <div style={{width:28,height:28,borderRadius:"50%",background:C.greenDim,border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                 <img src="/logo.svg" alt="" style={{width:16,height:16,objectFit:"contain"}}/>
               </div>
-            )}
-            <div style={{
-              maxWidth:"80%",padding:"12px 16px",
-              borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",
-              background:m.role==="user"?C.greenDim:C.card,
-              border:"1px solid "+(m.role==="user"?C.green:C.border),
-              fontSize:14,lineHeight:1.75,
-              color:m.role==="user"?"#e0f0d8":C.text,
-              whiteSpace:"pre-wrap",
-            }}>
-              {m.content}
+              <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:"18px 18px 18px 4px",padding:"14px 18px",display:"flex",gap:5,alignItems:"center"}}>
+                {[0,1,2].map(i=>(
+                  <div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.green,animation:"dots 1.2s ease infinite",animationDelay:`${i*0.2}s`}}/>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-
-        {loading && (
-          <div style={{display:"flex",alignItems:"center",gap:8,animation:"fadein 0.2s ease"}}>
-            <div style={{width:28,height:28,borderRadius:"50%",background:C.greenDim,border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-              <img src="/logo.svg" alt="" style={{width:16,height:16,objectFit:"contain"}}/>
-            </div>
-            <div style={{background:C.card,border:"1px solid "+C.border,borderRadius:"18px 18px 18px 4px",padding:"14px 18px",display:"flex",gap:5,alignItems:"center"}}>
-              {[0,1,2].map(i=>(
-                <div key={i} style={{width:7,height:7,borderRadius:"50%",background:C.green,animation:"dots 1.2s ease infinite",animationDelay:`${i*0.2}s`}}/>
-              ))}
-            </div>
-          </div>
-        )}
-        <div ref={bottomRef}/>
-      </div>
-
-      {/* INPUT BAR */}
-      <div style={{flexShrink:0,background:"#0f0f0f",borderTop:"1px solid #1a1a1a",padding:"10px 12px"}}>
-        {(recording || transcribing) && (
-          <div style={{textAlign:"center",fontSize:11,marginBottom:6,fontWeight:600,color:recording?C.red:C.muted}}>
-            {recording ? "● Recording — tap mic to stop" : "Transcribing..."}
-          </div>
-        )}
-        <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={e=>{setInput(e.target.value);autoResize();}}
-            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
-            placeholder={transcribing?"Transcribing...":"Message..."}
-            disabled={transcribing}
-            style={{
-              flex:1,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:22,
-              padding:"10px 16px",fontSize:16,color:"#eee",fontFamily:"inherit",
-              resize:"none",lineHeight:1.5,height:42,maxHeight:120,overflowY:"auto",
-              transition:"border-color 0.15s",
-            }}
-          />
-
-          {/* MIC — toggle */}
-          <button onClick={toggleRecording}
-            disabled={transcribing||loading}
-            style={{
-              width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,
-              background:recording?"#1a0a0a":"#1a1a1a",
-              color:recording?C.red:transcribing?C.muted:C.muted,
-              display:"flex",alignItems:"center",justifyContent:"center",
-              cursor:transcribing||loading?"default":"pointer",
-              animation:recording?"recpulse 1s ease infinite":"none",
-              transition:"background 0.15s, color 0.15s",
-            }}>
-            {recording
-              ? <svg width="16" height="16" viewBox="0 0 24 24" fill={C.red} stroke="none"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
-              : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-            }
-          </button>
-
-          {/* SEND */}
-          <button onClick={send}
-            disabled={!input.trim()||loading}
-            style={{
-              width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,
-              background:input.trim()&&!loading?C.green:"#1a1a1a",
-              color:input.trim()&&!loading?"#fff":"#333",
-              display:"flex",alignItems:"center",justifyContent:"center",
-              cursor:input.trim()&&!loading?"pointer":"default",
-              transition:"background 0.15s",
-            }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="22" y1="2" x2="11" y2="13"/>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-          </button>
+          )}
+          <div ref={bottomRef}/>
         </div>
-      </div>
+      )}
+
+      {/* INPUT BAR — only when conversation active */}
+      {!isEmpty && (
+        <div style={{flexShrink:0,background:"#0f0f0f",borderTop:"1px solid #1a1a1a",padding:"10px 12px"}}>
+          <InputBar
+            input={input} setInput={setInput} loading={loading}
+            recording={recording} transcribing={transcribing}
+            textareaRef={textareaRef} onSend={send}
+            onToggleRecording={toggleRecording} autoResize={autoResize}
+          />
+        </div>
+      )}
     </div>
   );
 }
