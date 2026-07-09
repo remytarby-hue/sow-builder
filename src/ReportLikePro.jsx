@@ -397,7 +397,7 @@ export default function ReportLikePro({ onBack }) {
 
       {/* COPY ALL — sticky bottom */}
       {selectedCount > 0 && (
-        <div style={{position:"fixed",bottom:68,left:0,right:0,padding:"10px 16px",background:"rgba(15,15,15,0.95)",borderTop:"1px solid #222",zIndex:20,animation:"slideup 0.2s ease",backdropFilter:"blur(10px)"}}>
+        <div style={{position:"fixed",bottom:"calc(68px + env(safe-area-inset-bottom))",left:0,right:0,padding:"10px 16px",background:"rgba(15,15,15,0.95)",borderTop:"1px solid #222",zIndex:20,animation:"slideup 0.2s ease",backdropFilter:"blur(10px)"}}>
           <button onClick={copySelected}
             style={{width:"100%",padding:"16px",borderRadius:99,border:"none",background: copied ? "#27ae60" : C.green,color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",transition:"background 0.2s"}}>
             {copied ? `Copied! (${selectedCount} phrase${selectedCount>1?"s":""})` : `Copy ${selectedCount} phrase${selectedCount>1?"s":""} to clipboard`}
