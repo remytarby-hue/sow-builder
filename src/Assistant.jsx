@@ -134,9 +134,17 @@ export default function Assistant() {
       <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"16px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch",touchAction:"pan-y",overscrollBehavior:"contain"}}>
 
         {messages.length === 0 && !loading && (
-          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <div style={{textAlign:"center",color:"#2a2a2a",fontSize:13,lineHeight:1.8,padding:"0 32px"}}>
-              Ask about moisture standards,<br/>get observations written,<br/>draft notes for assessors.
+          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,padding:"0 32px"}}>
+            <div style={{width:64,height:64,borderRadius:"50%",background:C.greenDim,border:"1px solid #2a2a2a",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <img src="/logo.svg" alt="" style={{width:36,height:36,objectFit:"contain"}}/>
+            </div>
+            <div style={{textAlign:"center"}}>
+              <div style={{fontSize:18,fontWeight:700,color:"#fff",marginBottom:10}}>Restoration Assistant</div>
+              <div style={{fontSize:13,color:"#555",lineHeight:2}}>
+                Restoration Observation · Site Note<br/>
+                Technical question · Client message
+              </div>
+              <div style={{fontSize:13,color:"#3d6b27",fontStyle:"italic",marginTop:12}}>Ask and you shall receive.</div>
             </div>
           </div>
         )}
