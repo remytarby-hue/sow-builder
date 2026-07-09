@@ -89,7 +89,7 @@ function HistoryPanel({ onClose }) {
   };
 
   return (
-    <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:C.bg,zIndex:50,display:"flex",flexDirection:"column"}}>
+    <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:C.bg,zIndex:50,display:"flex",flexDirection:"column",paddingTop:"env(safe-area-inset-top)"}}>
       {/* Header */}
       <div style={{background:"#0f0f0f",borderBottom:"1px solid #1a1a1a",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>

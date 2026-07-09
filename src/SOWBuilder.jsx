@@ -1632,7 +1632,7 @@ export default function SOWBuilder({ onBack }) {
   };
 
   return (
-    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',Arial,sans-serif",color:C.text,paddingBottom:90}}>
+    <div style={{minHeight:"100vh",background:C.bg,fontFamily:"'Segoe UI',Arial,sans-serif",color:C.text,paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}>
       <style>{`
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
         @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
@@ -1644,7 +1644,7 @@ export default function SOWBuilder({ onBack }) {
       `}</style>
 
       {/* HEADER */}
-      <div style={{background:"#0f0f0f",borderBottom:"1px solid #222",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
+      <div style={{background:"#0f0f0f",borderBottom:"1px solid #222",padding:"14px 20px",paddingTop:"calc(env(safe-area-inset-top) + 14px)",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:10}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           {screen!=="home" && (
             <button onClick={()=>{ if(screen==="result") { viewEntry ? (setViewEntry(null), setScreen("home")) : backToEdit(); } else reset(); }}
