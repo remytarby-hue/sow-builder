@@ -124,7 +124,7 @@ export default function App() {
         * { box-sizing:border-box; }
         button { -webkit-tap-highlight-color:transparent; }
         html, body { overflow-x:hidden; max-width:100vw; }
-        @keyframes screenfade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes screenfade { from { opacity:0; } to { opacity:1; } }
         .screen-enter { animation: screenfade 0.2s ease forwards; }
       `}</style>
       {screen === "assistant"
