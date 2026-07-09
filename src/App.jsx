@@ -110,12 +110,12 @@ function HomeScreen({ setScreen }) {
 
 export default function App() {
   const [screen, setScreen] = useState("home");
-  const [visible, setVisible] = useState("home");
+  const [animKey, setAnimKey] = useState(0);
 
   const navigate = (next) => {
     if (next === screen) return;
-    setVisible(null);
-    setTimeout(() => { setScreen(next); setVisible(next); }, 120);
+    setScreen(next);
+    setAnimKey(k => k + 1);
   };
 
   return (
@@ -125,14 +125,18 @@ export default function App() {
         button { -webkit-tap-highlight-color:transparent; }
         html, body { overflow-x:hidden; max-width:100vw; }
         @keyframes screenfade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-        .screen-enter { animation: screenfade 0.18s ease forwards; }
+        .screen-enter { animation: screenfade 0.2s ease forwards; }
       `}</style>
-      <div className={visible ? "screen-enter" : ""} style={{opacity: visible ? 1 : 0, transition:"opacity 0.1s"}}>
-        {screen === "home"      && <HomeScreen setScreen={navigate} />}
-        {screen === "sow"       && <SOWBuilder />}
-        {screen === "report"    && <ReportLikePro />}
-        {screen === "assistant" && <Assistant />}
-      </div>
+      {screen === "assistant"
+        ? <Assistant key={animKey} />
+        : (
+          <div key={animKey} className="screen-enter">
+            {screen === "home"   && <HomeScreen setScreen={navigate} />}
+            {screen === "sow"    && <SOWBuilder />}
+            {screen === "report" && <ReportLikePro />}
+          </div>
+        )
+      }
       <BottomNav screen={screen} setScreen={navigate} />
     </div>
   );
