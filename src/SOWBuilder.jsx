@@ -1600,12 +1600,12 @@ export default function SOWBuilder({ onBack }) {
 
   const cur = SOW_TYPES.find(t => t.id === type);
   const handleResult = doc => {
-    setResult(doc); setAddress(""); setSaved(false); setScreen("result"); window.scrollTo(0,0);
-    const entry = { id: Date.now().toString(), address: "", type, label: cur?.label||type, text: doc, date: new Date().toISOString() };
+    setResult(doc); setSaved(false); setScreen("result"); window.scrollTo(0,0);
+    const entry = { id: Date.now().toString(), address: address.trim(), type, label: cur?.label||type, text: doc, date: new Date().toISOString() };
     saveToHistory(entry); setHistory(loadHistory());
   };
   const copy = () => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(()=>setCopied(false),2500); };
-  const reset = () => { setScreen("home"); setType(null); setResult(""); setFormKey(k=>k+1); setViewEntry(null); };
+  const reset = () => { setScreen("home"); setType(null); setResult(""); setAddress(""); setFormKey(k=>k+1); setViewEntry(null); };
   const backToEdit = () => { setScreen("form"); };
 
   const handleSave = () => {
@@ -1719,7 +1719,17 @@ export default function SOWBuilder({ onBack }) {
 
         {/* FORM */}
         {(screen==="form"||screen==="result")&&type&&!viewEntry&&(
-          <div key={formKey} style={{animation:"fadein 0.3s ease", display:screen==="form"?"block":"none"}}>{FORMS[type]}</div>
+          <div key={formKey} style={{animation:"fadein 0.3s ease", display:screen==="form"?"block":"none"}}>
+            <div style={{marginBottom:16}}>
+              <input
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="Job address (optional)..."
+                style={{width:"100%",background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:99,padding:"12px 18px",fontSize:16,color:"#eee",fontFamily:"inherit"}}
+              />
+            </div>
+            {FORMS[type]}
+          </div>
         )}
 
         {/* RESULT */}
@@ -1735,22 +1745,6 @@ export default function SOWBuilder({ onBack }) {
                 <button onClick={reset} style={{background:"#1a1a1a",border:"1px solid #333",color:"#ccc",borderRadius:99,padding:"6px 16px",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>New SOW</button>
               </div>
             </div>
-
-            {/* ADDRESS — optional, updates the saved entry */}
-            {!viewEntry && (
-              <div style={{display:"flex",gap:8,marginBottom:12}}>
-                <input
-                  value={address}
-                  onChange={e => {
-                    setAddress(e.target.value);
-                    const h = loadHistory();
-                    if (h[0] && !h[0].address) { h[0].address = e.target.value; localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
-                  }}
-                  placeholder="Job address (optional)..."
-                  style={{flex:1,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:99,padding:"10px 16px",fontSize:14,color:"#eee",fontFamily:"inherit"}}
-                />
-              </div>
-            )}
 
             <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:"#ddd",overflowY:"auto",marginBottom:12}}>
               {result}
