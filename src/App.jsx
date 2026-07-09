@@ -110,14 +110,30 @@ function HomeScreen({ setScreen }) {
 
 export default function App() {
   const [screen, setScreen] = useState("home");
+  const [visible, setVisible] = useState("home");
+
+  const navigate = (next) => {
+    if (next === screen) return;
+    setVisible(null);
+    setTimeout(() => { setScreen(next); setVisible(next); }, 120);
+  };
+
   return (
     <div style={{fontFamily:"'Segoe UI',Arial,sans-serif",background:"#0f0f0f",minHeight:"100vh",paddingTop:"env(safe-area-inset-top)"}}>
-      <style>{`* { box-sizing:border-box; } button { -webkit-tap-highlight-color:transparent; } html, body { overflow-x:hidden; max-width:100vw; }`}</style>
-      {screen === "home"      && <HomeScreen setScreen={setScreen} />}
-      {screen === "sow"       && <SOWBuilder />}
-      {screen === "report"    && <ReportLikePro />}
-      {screen === "assistant" && <Assistant />}
-      <BottomNav screen={screen} setScreen={setScreen} />
+      <style>{`
+        * { box-sizing:border-box; }
+        button { -webkit-tap-highlight-color:transparent; }
+        html, body { overflow-x:hidden; max-width:100vw; }
+        @keyframes screenfade { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        .screen-enter { animation: screenfade 0.18s ease forwards; }
+      `}</style>
+      <div className={visible ? "screen-enter" : ""} style={{opacity: visible ? 1 : 0, transition:"opacity 0.1s"}}>
+        {screen === "home"      && <HomeScreen setScreen={navigate} />}
+        {screen === "sow"       && <SOWBuilder />}
+        {screen === "report"    && <ReportLikePro />}
+        {screen === "assistant" && <Assistant />}
+      </div>
+      <BottomNav screen={screen} setScreen={navigate} />
     </div>
   );
 }
