@@ -253,6 +253,19 @@ export default function Assistant() {
     }
   };
 
+  const startTemplate = (prompt) => {
+    const guide = {
+      "Restoration Observation": "Describe the cause of damage, which areas were affected, and what was observed on site. Include any moisture readings, visible damage, or mould if relevant.",
+      "Site Note": "What happened during today's attendance? (e.g. equipment installed/removed, containment, access issues, works completed)",
+      "Client Message": "What do you need to tell the client? Give me the key info and I'll write the message.",
+      "Other": "What do you need?",
+    };
+    setMessages([{ role: "assistant", content: guide[prompt] }]);
+    setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  const TEMPLATES = ["Restoration Observation", "Site Note", "Client Message", "Other"];
+
   const isEmpty = messages.length === 0 && !loading;
   const historyCount = loadHistory().length;
 
@@ -301,6 +314,19 @@ export default function Assistant() {
               Technical question · Client message
             </div>
             <div style={{fontSize:13,color:"#3d6b27",fontStyle:"italic",marginTop:10}}>Ask and you shall receive.</div>
+          </div>
+          {/* TEMPLATE BUTTONS */}
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,justifyContent:"center",maxWidth:360}}>
+            {TEMPLATES.map(t => (
+              <button key={t} onClick={() => startTemplate(t)}
+                style={{background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#ccc",borderRadius:99,padding:"8px 16px",fontSize:13,cursor:"pointer",fontFamily:"inherit",transition:"all 0.15s"}}
+                onTouchStart={e=>e.currentTarget.style.borderColor=C.green}
+                onTouchEnd={e=>e.currentTarget.style.borderColor="#2a2a2a"}
+                onMouseEnter={e=>e.currentTarget.style.borderColor=C.green}
+                onMouseLeave={e=>e.currentTarget.style.borderColor="#2a2a2a"}>
+                {t}
+              </button>
+            ))}
           </div>
           <div style={{width:"100%",maxWidth:480}}>
             <InputBar input={input} setInput={setInput} loading={loading} recording={recording} transcribing={transcribing} textareaRef={textareaRef} onSend={send} onToggleRecording={toggleRecording} autoResize={autoResize} compact/>
