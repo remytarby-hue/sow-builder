@@ -1574,7 +1574,7 @@ const loadHistory = () => { try { return JSON.parse(localStorage.getItem(HISTORY
 const saveToHistory = (entry) => {
   const h = loadHistory();
   h.unshift(entry);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0,30)));
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h.slice(0,10)));
 };
 const deleteFromHistory = (id) => {
   const h = loadHistory().filter(e => e.id !== id);
@@ -1599,7 +1599,11 @@ export default function SOWBuilder({ onBack }) {
   const [viewEntry,setViewEntry]=useState(null);
 
   const cur = SOW_TYPES.find(t => t.id === type);
-  const handleResult = doc => { setResult(doc); setAddress(""); setSaved(false); setScreen("result"); window.scrollTo(0,0); };
+  const handleResult = doc => {
+    setResult(doc); setAddress(""); setSaved(false); setScreen("result"); window.scrollTo(0,0);
+    const entry = { id: Date.now().toString(), address: "", type, label: cur?.label||type, text: doc, date: new Date().toISOString() };
+    saveToHistory(entry); setHistory(loadHistory());
+  };
   const copy = () => { navigator.clipboard.writeText(result); setCopied(true); setTimeout(()=>setCopied(false),2500); };
   const reset = () => { setScreen("home"); setType(null); setResult(""); setFormKey(k=>k+1); setViewEntry(null); };
   const backToEdit = () => { setScreen("form"); };
