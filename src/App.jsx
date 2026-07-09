@@ -63,7 +63,7 @@ function HomeScreen({ setScreen }) {
       id: "assistant",
       label: "Restoration Assistant",
       sub: "AI-Powered",
-      desc: "Ask questions, get observations written, draft notes for assessors.",
+      desc: "Restoration Observation · Site Note · Technical question · Client message",
       icon: <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#5a9a3a" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
     },
   ];
