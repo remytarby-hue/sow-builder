@@ -1736,36 +1736,25 @@ export default function SOWBuilder({ onBack }) {
               </div>
             </div>
 
+            {/* ADDRESS — optional, updates the saved entry */}
+            {!viewEntry && (
+              <div style={{display:"flex",gap:8,marginBottom:12}}>
+                <input
+                  value={address}
+                  onChange={e => {
+                    setAddress(e.target.value);
+                    const h = loadHistory();
+                    if (h[0] && !h[0].address) { h[0].address = e.target.value; localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); }
+                  }}
+                  placeholder="Job address (optional)..."
+                  style={{flex:1,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:99,padding:"10px 16px",fontSize:14,color:"#eee",fontFamily:"inherit"}}
+                />
+              </div>
+            )}
+
             <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:"#ddd",overflowY:"auto",marginBottom:12}}>
               {result}
             </div>
-
-            {/* SAVE TO HISTORY — only for new SOWs */}
-            {!viewEntry && (
-              <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"16px"}}>
-                <div style={{fontSize:12,fontWeight:600,color:C.muted,marginBottom:10,letterSpacing:0.5,textTransform:"uppercase"}}>Save to history</div>
-                {saved ? (
-                  <div style={{display:"flex",alignItems:"center",gap:8,color:C.green,fontSize:14,fontWeight:600}}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Saved — {address}
-                  </div>
-                ) : (
-                  <div style={{display:"flex",gap:8}}>
-                    <input
-                      value={address}
-                      onChange={e=>setAddress(e.target.value)}
-                      onKeyDown={e=>e.key==="Enter"&&handleSave()}
-                      placeholder="Job address..."
-                      style={{flex:1,background:"#111",border:"1px solid #333",borderRadius:99,padding:"10px 16px",fontSize:14,color:"#eee",fontFamily:"inherit"}}
-                    />
-                    <button onClick={handleSave} disabled={!address.trim()}
-                      style={{background:address.trim()?C.green:"#222",border:"none",borderRadius:99,padding:"10px 20px",fontSize:13,fontWeight:700,color:address.trim()?"#fff":"#555",cursor:address.trim()?"pointer":"default",fontFamily:"inherit",transition:"background 0.15s"}}>
-                      Save
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         )}
       </div>
