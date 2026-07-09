@@ -288,6 +288,11 @@ export default function ReportLikePro({ onBack }) {
     navigator.clipboard.writeText(phrases.map(p => "• " + p).join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+    try {
+      const s = JSON.parse(localStorage.getItem("app_stats") || "{}");
+      s.phrases_copied = (s.phrases_copied || 0) + phrases.length;
+      localStorage.setItem("app_stats", JSON.stringify(s));
+    } catch {}
   };
 
   const switchCategory = (catId) => {
