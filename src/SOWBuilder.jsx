@@ -1732,13 +1732,9 @@ export default function SOWBuilder({ onBack }) {
               </div>
             </div>
 
-            <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:"#ddd",maxHeight:"52vh",overflowY:"auto",marginBottom:12}}>
+            <div style={{background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:16,padding:"18px 20px",whiteSpace:"pre-wrap",fontSize:13,lineHeight:1.9,color:"#ddd",overflowY:"auto",marginBottom:12}}>
               {result}
             </div>
-
-            <button onClick={copy} style={{width:"100%",padding:"16px",borderRadius:99,background:copied?"#27ae60":C.green,border:"none",color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer",fontFamily:"inherit",marginBottom:12}}>
-              {copied?"Copied to clipboard!":"Copy to clipboard"}
-            </button>
 
             {/* SAVE TO HISTORY — only for new SOWs */}
             {!viewEntry && (
@@ -1769,6 +1765,15 @@ export default function SOWBuilder({ onBack }) {
           </div>
         )}
       </div>
+
+      {/* COPY — fixed bottom, visible on result screen */}
+      {screen==="result" && (
+        <div style={{position:"fixed",bottom:"calc(68px + env(safe-area-inset-bottom))",left:0,right:0,padding:"10px 16px",background:"rgba(15,15,15,0.95)",borderTop:"1px solid #222",zIndex:20,backdropFilter:"blur(10px)"}}>
+          <button onClick={copy} style={{width:"100%",padding:"15px",borderRadius:99,background:copied?"#27ae60":C.green,border:"none",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",fontFamily:"inherit",transition:"background 0.2s"}}>
+            {copied ? "Copied to clipboard!" : "Copy to clipboard"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
