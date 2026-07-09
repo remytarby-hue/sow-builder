@@ -317,7 +317,10 @@ export default function ReportLikePro({ onBack }) {
       </div>
 
       {/* CATEGORY CHIPS */}
-      <div style={{background:"#0f0f0f",borderBottom:"1px solid #1e1e1e",overflowX:"auto",WebkitOverflowScrolling:"touch",padding:"12px 16px"}}>
+      <div style={{background:"#0f0f0f",borderBottom:"1px solid #1e1e1e",position:"relative"}}>
+        <div style={{position:"absolute",left:0,top:0,bottom:0,width:24,background:"linear-gradient(to right, #0f0f0f, transparent)",zIndex:2,pointerEvents:"none"}}/>
+        <div style={{position:"absolute",right:0,top:0,bottom:0,width:40,background:"linear-gradient(to left, #0f0f0f, transparent)",zIndex:2,pointerEvents:"none"}}/>
+        <div style={{overflowX:"auto",WebkitOverflowScrolling:"touch",padding:"12px 16px"}}>
         <div style={{display:"flex",gap:8,minWidth:"max-content"}}>
           {CATEGORIES.map(cat => {
             const active = activeCategory===cat.id;
@@ -331,6 +334,7 @@ export default function ReportLikePro({ onBack }) {
               </button>
             );
           })}
+        </div>
         </div>
       </div>
 
