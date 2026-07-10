@@ -31,12 +31,12 @@ function formatDate(iso) {
   return d.toLocaleDateString("en-AU", { day:"numeric", month:"short" }) + " " + time;
 }
 
-function InputBar({ input, setInput, loading, recording, transcribing, speaking, textareaRef, onSend, onToggleRecording, autoResize, compact }) {
+function InputBar({ input, setInput, loading, recording, transcribing, textareaRef, onSend, onToggleRecording, autoResize, compact }) {
   return (
     <div style={{background: compact ? "transparent" : "#0f0f0f", borderTop: compact ? "none" : "1px solid #1a1a1a", padding: compact ? "0" : "10px 12px", width:"100%"}}>
-      {(recording || transcribing || speaking) && (
+      {(recording || transcribing) && (
         <div style={{textAlign:"center",fontSize:11,marginBottom:6,fontWeight:600,color:recording?C.red:C.muted}}>
-          {recording ? "● Recording — tap mic to stop" : transcribing ? "Transcribing..." : "🔊 Speaking..."}
+          {recording ? "● Recording — tap mic to stop" : "Transcribing..."}
         </div>
       )}
       <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
@@ -49,8 +49,8 @@ function InputBar({ input, setInput, loading, recording, transcribing, speaking,
           disabled={transcribing}
           style={{flex:1,background:"#1a1a1a",border:"1px solid #2a2a2a",borderRadius:22,padding:"10px 16px",fontSize:16,color:"#eee",fontFamily:"inherit",resize:"none",lineHeight:1.5,height:42,maxHeight:120,overflowY:"auto",transition:"border-color 0.15s"}}
         />
-        <button onClick={onToggleRecording} disabled={transcribing||loading||speaking}
-          style={{width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,background:recording?"#1a0a0a":"#1a1a1a",color:recording?C.red:C.muted,display:"flex",alignItems:"center",justifyContent:"center",cursor:transcribing||loading||speaking?"default":"pointer",animation:recording?"recpulse 1s ease infinite":"none",transition:"background 0.15s, color 0.15s"}}>
+        <button onClick={onToggleRecording} disabled={transcribing||loading}
+          style={{width:44,height:44,borderRadius:"50%",border:"none",flexShrink:0,background:recording?"#1a0a0a":"#1a1a1a",color:recording?C.red:C.muted,display:"flex",alignItems:"center",justifyContent:"center",cursor:transcribing||loading?"default":"pointer",animation:recording?"recpulse 1s ease infinite":"none",transition:"background 0.15s, color 0.15s"}}>
           {recording
             ? <svg width="16" height="16" viewBox="0 0 24 24" fill={C.red} stroke="none"><rect x="4" y="4" width="16" height="16" rx="3"/></svg>
             : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
@@ -163,21 +163,15 @@ export default function Assistant() {
   const [transcribing, setTranscribing] = useState(false);
   const [copied, setCopied] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [handsFree, setHandsFree] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
   const bottomRef = useRef(null);
   const mediaRef = useRef(null);
   const chunksRef = useRef([]);
   const mimeRef = useRef("");
   const textareaRef = useRef(null);
-  const handsFreeRef = useRef(false);
-  const audioRef = useRef(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
-
-  useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
 
   const autoResize = () => {
     const el = textareaRef.current;
@@ -186,34 +180,16 @@ export default function Assistant() {
     el.style.height = Math.min(el.scrollHeight, 120) + "px";
   };
 
-  const speakText = (text) => new Promise((resolve) => {
-    setSpeaking(true);
-    fetch("/api/speak", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text }),
-    })
-      .then(res => { if (!res.ok) throw new Error("TTS failed"); return res.blob(); })
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-        audio.onended = () => { setSpeaking(false); URL.revokeObjectURL(url); resolve(); };
-        audio.onerror = () => { setSpeaking(false); URL.revokeObjectURL(url); resolve(); };
-        audio.play();
-      })
-      .catch(() => { setSpeaking(false); resolve(); });
-  });
+  const send = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+    setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "42px";
 
-  // Shared send logic. When `speak` is true, the reply is read aloud, and once
-  // it finishes, listening resumes automatically — this is what keeps a
-  // hands-free session going without the user re-tapping the mic each turn.
-  const sendMessage = async (text, { speak } = {}) => {
     const newMessages = [...messages, { role: "user", content: text }];
     setMessages(newMessages);
     setLoading(true);
 
-    let reply;
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -221,27 +197,13 @@ export default function Assistant() {
         body: JSON.stringify({ messages: newMessages }),
       });
       const data = await res.json();
-      reply = data.content;
+      const reply = data.content;
       setMessages(prev => [...prev, { role: "assistant", content: reply }]);
       saveToHistory(text, reply);
     } catch {
-      reply = "Something went wrong. Please try again.";
-      setMessages(prev => [...prev, { role: "assistant", content: reply }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Something went wrong. Please try again." }]);
     }
     setLoading(false);
-
-    if (speak) {
-      await speakText(reply);
-      if (handsFreeRef.current) startRecording();
-    }
-  };
-
-  const send = () => {
-    const text = input.trim();
-    if (!text || loading) return;
-    setInput("");
-    if (textareaRef.current) textareaRef.current.style.height = "42px";
-    sendMessage(text, { speak: handsFreeRef.current });
   };
 
   const copyMessage = (text, i) => {
@@ -251,72 +213,43 @@ export default function Assistant() {
     });
   };
 
-  const startRecording = async () => {
-    if (transcribing || loading || speaking || recording) return;
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mime = ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg"].find(t => MediaRecorder.isTypeSupported(t)) || "";
-      mimeRef.current = mime;
-      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
-      chunksRef.current = [];
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        if (!chunksRef.current.length) return;
-        setTranscribing(true);
-        const ext = mimeRef.current.includes("mp4") ? "m4a" : "webm";
-        const blob = new Blob(chunksRef.current, { type: mimeRef.current || "audio/webm" });
-        const form = new FormData();
-        form.append("audio", blob, `audio.${ext}`);
-        try {
-          const res = await fetch("/api/transcribe", { method: "POST", body: form });
-          const data = await res.json();
-          const text = data.text?.trim();
-          setTranscribing(false);
-          if (text) {
-            if (handsFreeRef.current) {
-              sendMessage(text, { speak: true });
-            } else {
-              setInput(prev => (prev + " " + text).trim());
+  const toggleRecording = async () => {
+    if (transcribing || loading) return;
+    if (recording) {
+      mediaRef.current?.stop();
+      setRecording(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mime = ["audio/mp4","audio/webm;codecs=opus","audio/webm","audio/ogg"].find(t => MediaRecorder.isTypeSupported(t)) || "";
+        mimeRef.current = mime;
+        const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+        chunksRef.current = [];
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+        recorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          if (!chunksRef.current.length) return;
+          setTranscribing(true);
+          const ext = mimeRef.current.includes("mp4") ? "m4a" : "webm";
+          const blob = new Blob(chunksRef.current, { type: mimeRef.current || "audio/webm" });
+          const form = new FormData();
+          form.append("audio", blob, `audio.${ext}`);
+          try {
+            const res = await fetch("/api/transcribe", { method: "POST", body: form });
+            const data = await res.json();
+            if (data.text?.trim()) {
+              setInput(prev => (prev + " " + data.text).trim());
               setTimeout(autoResize, 50);
             }
-          } else if (handsFreeRef.current) {
-            // Nothing understood (silence) — keep the conversation alive.
-            startRecording();
-          }
-        } catch {
+          } catch {}
           setTranscribing(false);
-        }
-      };
-      mediaRef.current = recorder;
-      recorder.start();
-      setRecording(true);
-    } catch {
-      setHandsFree(false);
-      alert("Microphone access denied.");
-    }
-  };
-
-  const stopRecording = () => {
-    mediaRef.current?.stop();
-    setRecording(false);
-  };
-
-  const toggleRecording = () => {
-    if (transcribing || loading || speaking) return;
-    recording ? stopRecording() : startRecording();
-  };
-
-  const toggleHandsFree = () => {
-    if (handsFree) {
-      setHandsFree(false);
-      handsFreeRef.current = false;
-      if (recording) stopRecording();
-      if (audioRef.current) { audioRef.current.pause(); setSpeaking(false); }
-    } else {
-      setHandsFree(true);
-      handsFreeRef.current = true;
-      startRecording();
+        };
+        mediaRef.current = recorder;
+        recorder.start();
+        setRecording(true);
+      } catch {
+        alert("Microphone access denied.");
+      }
     }
   };
 
@@ -365,11 +298,6 @@ export default function Assistant() {
               Clear
             </button>
           )}
-          <button onClick={toggleHandsFree}
-            style={{background:handsFree?C.greenDim:"transparent",border:"1px solid "+(handsFree?C.green:"#2a2a2a"),color:handsFree?C.green:C.muted,borderRadius:99,padding:"5px 12px",fontSize:11,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-            {handsFree ? "End conversation" : "Hands-free"}
-          </button>
           <button onClick={()=>setShowHistory(true)}
             style={{background:"transparent",border:"1px solid #2a2a2a",color:C.muted,borderRadius:99,padding:"5px 12px",fontSize:11,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:5}}>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -407,7 +335,7 @@ export default function Assistant() {
             ))}
           </div>
           <div style={{width:"100%",maxWidth:480}}>
-            <InputBar input={input} setInput={setInput} loading={loading} recording={recording} transcribing={transcribing} speaking={speaking} textareaRef={textareaRef} onSend={send} onToggleRecording={toggleRecording} autoResize={autoResize} compact/>
+            <InputBar input={input} setInput={setInput} loading={loading} recording={recording} transcribing={transcribing} textareaRef={textareaRef} onSend={send} onToggleRecording={toggleRecording} autoResize={autoResize} compact/>
           </div>
         </div>
       )}
@@ -458,7 +386,7 @@ export default function Assistant() {
       {/* INPUT BAR */}
       {!isEmpty && (
         <div style={{flexShrink:0,background:"#0f0f0f",borderTop:"1px solid #1a1a1a",padding:"10px 12px"}}>
-          <InputBar input={input} setInput={setInput} loading={loading} recording={recording} transcribing={transcribing} speaking={speaking} textareaRef={textareaRef} onSend={send} onToggleRecording={toggleRecording} autoResize={autoResize}/>
+          <InputBar input={input} setInput={setInput} loading={loading} recording={recording} transcribing={transcribing} textareaRef={textareaRef} onSend={send} onToggleRecording={toggleRecording} autoResize={autoResize}/>
         </div>
       )}
 
