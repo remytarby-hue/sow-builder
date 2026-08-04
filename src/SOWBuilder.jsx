@@ -111,6 +111,9 @@ function buildMould(d, works) {
     ...(d.siteNotes ? ["Site Notes:", tobullets(d.siteNotes), ""] : []),
     "\tWorks required:",
     tobullets(works),
+    ...(d.stripReq === "yes" && d.stripAreas && Object.keys(d.stripAreas).length ? [
+      "", "Strip-Out Areas:", stripAreasToText(d.stripAreas)
+    ] : []),
     "",
     "General Scope of Works",
     GENERAL_SCOPE,
@@ -237,6 +240,9 @@ function buildStripout(d, works) {
     ...(d.siteNotes ? ["Site Notes:", tobullets(d.siteNotes), ""] : []),
     "\tWorks required:",
     tobullets(works),
+    ...(d.stripAreas && Object.keys(d.stripAreas).length ? [
+      "", "Strip-Out Areas:", stripAreasToText(d.stripAreas)
+    ] : []),
     "",
     "General Scope of Works",
     GENERAL_SCOPE,
@@ -346,6 +352,10 @@ function buildFlood(d, works) {
   if (d.phase2 === "yes") {
     sections.push("", "2 - Strip Out:");
     sections.push(tobullets(works.w2));
+    if (d.stripAreas && Object.keys(d.stripAreas).length) {
+      const areasText = stripAreasToText(d.stripAreas);
+      if (areasText) { sections.push("", "Strip-Out Areas:"); sections.push(areasText); }
+    }
     sections.push("", "Total Labour Hours");
     sections.push("\t• Technician hours: " + d.techs2 + " Technician" + (d.techs2>1?"s":"") + " x " + d.hours2 + " hours");
     sections.push("", "Equipment Breakdown");
@@ -628,6 +638,75 @@ function roomsToText(selected, extra) {
   return parts.join(", ");
 }
 
+function StripAreasPicker({ rooms, extra, areas, setAreas }) {
+  // Build full room list from selected rooms + extra
+  const allRooms = [...rooms];
+  if (extra && extra.trim()) {
+    extra.split(/[,\n]/).map(r => r.trim()).filter(Boolean).forEach(r => {
+      if (!allRooms.includes(r)) allRooms.push(r);
+    });
+  }
+
+  const update = (room, field, val) => {
+    setAreas(prev => {
+      const next = { ...prev };
+      if (!next[room]) next[room] = { walls: "", ceiling: "" };
+      next[room] = { ...next[room], [field]: val };
+      return next;
+    });
+  };
+
+  if (allRooms.length === 0) {
+    return <span style={{ fontSize:13, color:C.muted }}>Select rooms in Section 1 first.</span>;
+  }
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+      {allRooms.map(room => (
+        <div key={room} style={{ background:"#111", border:"1px solid "+C.border, borderRadius:12, padding:"12px 14px" }}>
+          <div style={{ fontSize:13, fontWeight:700, color:C.green, marginBottom:10 }}>{room}</div>
+          <div style={{ display:"flex", gap:12 }}>
+            <div style={{ flex:1 }}>
+              <span style={{ fontSize:11, color:C.muted, fontWeight:600, display:"block", marginBottom:4 }}>Walls (m²)</span>
+              <input
+                type="number"
+                min="0"
+                value={(areas[room] || {}).walls || ""}
+                onChange={e => update(room, "walls", e.target.value)}
+                placeholder="0"
+                style={{ width:"100%", background:"#1a1a1a", border:"1px solid "+C.border, borderRadius:8, padding:"8px 12px", fontSize:16, color:"#eee", fontFamily:"inherit" }}
+              />
+            </div>
+            <div style={{ flex:1 }}>
+              <span style={{ fontSize:11, color:C.muted, fontWeight:600, display:"block", marginBottom:4 }}>Ceiling (m²)</span>
+              <input
+                type="number"
+                min="0"
+                value={(areas[room] || {}).ceiling || ""}
+                onChange={e => update(room, "ceiling", e.target.value)}
+                placeholder="0"
+                style={{ width:"100%", background:"#1a1a1a", border:"1px solid "+C.border, borderRadius:8, padding:"8px 12px", fontSize:16, color:"#eee", fontFamily:"inherit" }}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function stripAreasToText(areas) {
+  const lines = Object.entries(areas)
+    .filter(([, v]) => v.walls || v.ceiling)
+    .map(([room, v]) => {
+      const parts = [];
+      if (v.walls)   parts.push("Walls: " + v.walls + "m²");
+      if (v.ceiling) parts.push("Ceiling: " + v.ceiling + "m²");
+      return "\t• " + room + " — " + parts.join(" / ");
+    });
+  return lines.length ? lines.join("\n") : "";
+}
+
 function GenBtn({ onClick, loading }) {
   return (
     <button onClick={onClick} disabled={loading} style={{ width:"100%", padding:"16px", borderRadius:12, marginTop:4,
@@ -655,6 +734,8 @@ function MouldForm({ onResult }) {
   const [consDetail,setConsDetail]=useState("");
   const [addReqs,setAddReqs]=useState("");
   const [siteNotes,setSiteNotes]=useState("");
+  const [stripReq,setStripReq]=useState(null);
+  const [stripAreas,setStripAreas]=useState({});
   const [loading,setLoading]=useState(false);
 
   const DEFS_DRYING=[{key:"dehum",label:"Dehumidifier"},{key:"mover",label:"Air Mover / Fan"}];
@@ -684,6 +765,7 @@ function MouldForm({ onResult }) {
       techs, hours, dryingRequired, equip,
       specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+      stripReq, stripAreas,
     }, cleaned.works));
     setLoading(false);
   };
@@ -717,14 +799,24 @@ function MouldForm({ onResult }) {
       <TextField value={works} onChange={setWorks} placeholder="Describe what needs to be done…" rows={5} templateKey="mould"/>
     </Sec>
 
-    <Sec number={4} title="Labour">
+    <Sec number={4} title="Strip-Out Required?">
+      <YesNo value={stripReq} onChange={setStripReq}/>
+      {stripReq==="yes"&&(
+        <div style={{marginTop:14}}>
+          <span style={{...lbl,marginBottom:10}}>Strip-out areas — enter approximate surface per room</span>
+          <StripAreasPicker rooms={rooms} extra={roomsExtra} areas={stripAreas} setAreas={setStripAreas}/>
+        </div>
+      )}
+    </Sec>
+
+    <Sec number={5} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
         <div><span style={lbl}>Hours</span><Stepper value={hours} onChange={setHours} min={1} max={200}/></div>
       </div>
     </Sec>
 
-    <Sec number={5} title="Equipment">
+    <Sec number={6} title="Equipment">
       <span style={lbl}>Drying equipment required?</span>
       <YesNo value={dryingRequired} onChange={setDryingRequired}/>
       {dryingRequired==="yes"&&(
@@ -738,7 +830,7 @@ function MouldForm({ onResult }) {
       </div>
     </Sec>
 
-    <Sec number={6} title="Consumables">
+    <Sec number={7} title="Consumables">
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
         {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
       </div>
@@ -747,14 +839,14 @@ function MouldForm({ onResult }) {
       {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra sheeting, specialised PPE…" rows={2}/></div>}
     </Sec>
 
-    <Sec number={7} title="Additional Requirements">
+    <Sec number={8} title="Additional Requirements">
       <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
         {["Skip bin","Off-site storage","Truck"].map(ex=><span key={ex} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px dashed "+C.border,borderRadius:5,padding:"3px 9px"}}>e.g. {ex}</span>)}
       </div>
     </Sec>
 
-    <Sec number={8} title="Site Notes — Anything that could help attending technicians">
+    <Sec number={9} title="Site Notes — Anything that could help attending technicians">
       <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling — large ladder required, access via elevator, trolley needed, park on street only…" rows={3}/>
     </Sec>
 
@@ -1035,6 +1127,7 @@ function StripOutForm({ onResult }) {
   const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
   const [addReqs,setAddReqs]=useState("");
   const [siteNotes,setSiteNotes]=useState("");
+  const [stripAreas,setStripAreas]=useState({});
   const [loading,setLoading]=useState(false);
   const DEFS=[{key:"scrubber",label:"Air Scrubber (AFD)"},{key:"poles",label:"Containment Poles"}];
   const CONS_STD=["Plastic sheeting","PPE","Filters / bags","Containment doors","Multi tools blade","Blade","Cloth tape/masking tape","Rubbish bags","Floor protection"];
@@ -1063,6 +1156,7 @@ function StripOutForm({ onResult }) {
       techs, hours, truck, truckDays, equip,
       specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+      stripAreas,
     }, cleaned.works));
     setLoading(false);
   };
@@ -1109,14 +1203,19 @@ function StripOutForm({ onResult }) {
       <TextField value={works} onChange={setWorks} placeholder="Describe strip out works…" rows={4} templateKey="stripout"/>
     </Sec>
 
-    <Sec number={6} title="Labour">
+    <Sec number={6} title="Strip-Out Areas">
+      <span style={{...lbl,marginBottom:10}}>Enter approximate surface per room</span>
+      <StripAreasPicker rooms={rooms} extra={roomsExtra} areas={stripAreas} setAreas={setStripAreas}/>
+    </Sec>
+
+    <Sec number={7} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
         <div><span style={lbl}>Hours</span><Stepper value={hours} onChange={setHours} min={1} max={200}/></div>
       </div>
     </Sec>
 
-    <Sec number={7} title="Truck Required?">
+    <Sec number={8} title="Truck Required?">
       <YesNo value={truck} onChange={setTruck}/>
       {truck==="yes"&&<div style={{marginTop:12}}>
         <span style={lbl}>Number of days</span>
@@ -1124,11 +1223,11 @@ function StripOutForm({ onResult }) {
       </div>}
     </Sec>
 
-    <Sec number={8} title="Equipment">
+    <Sec number={9} title="Equipment">
       <EquipGrid defs={DEFS} values={equip} setValues={setEquip}/>
     </Sec>
 
-    <Sec number={9} title="Consumables">
+    <Sec number={10} title="Consumables">
       <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:12}}>
         {CONS_STD.map(c=><span key={c} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px solid "+C.border,borderRadius:5,padding:"3px 9px"}}>{c}</span>)}
       </div>
@@ -1137,11 +1236,11 @@ function StripOutForm({ onResult }) {
       {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra rubbish bags, specialised PPE…" rows={2}/></div>}
     </Sec>
 
-    <Sec number={10} title="Additional Requirements">
+    <Sec number={11} title="Additional Requirements">
       <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
     </Sec>
 
-    <Sec number={11} title="Site Notes — Anything that could help attending technicians">
+    <Sec number={12} title="Site Notes — Anything that could help attending technicians">
       <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling, elevator access, no parking on street…" rows={3}/>
     </Sec>
 
@@ -1281,6 +1380,7 @@ function FloodForm({ onResult }) {
 
   const [addReqs,setAddReqs]=useState("");
   const [siteNotes,setSiteNotes]=useState("");
+  const [stripAreas,setStripAreas]=useState({});
   const [loading,setLoading]=useState(false);
 
   const DEFS1=[{key:"trolley",label:"Trolley / Hand Trolley"},{key:"straps",label:"Lifting Straps"}];
@@ -1318,6 +1418,7 @@ function FloodForm({ onResult }) {
       techs3, hours3, equip3,
       techs4, hours4, drying4, equip4,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
+      stripAreas,
     }, {w1:cleaned.w1, w2:cleaned.w2, w3:cleaned.w3, w4:cleaned.w4}));
     setLoading(false);
   };
@@ -1389,6 +1490,10 @@ function FloodForm({ onResult }) {
         </div>
         <span style={lbl}>Works Required</span>
         <TextField value={w2} onChange={setW2} placeholder="Describe strip out works…" rows={3} templateKey="flood_stripout"/>
+        <div style={{marginTop:14}}>
+          <span style={{...lbl,marginBottom:10}}>Strip-out areas — enter approximate surface per room</span>
+          <StripAreasPicker rooms={rooms} extra={roomsExtra} areas={stripAreas} setAreas={setStripAreas}/>
+        </div>
         <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
           <div><span style={lbl}>Technicians</span><Stepper value={techs2} onChange={setTechs2} min={1}/></div>
           <div><span style={lbl}>Hours</span><Stepper value={hours2} onChange={setHours2} min={1} max={200}/></div>
