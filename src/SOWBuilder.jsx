@@ -75,9 +75,15 @@ const LABOUR_SHORT  = "\t• Labour carried out during initial attendance\n\t•
 function elecToText(desc, qty) {
   const lines = [];
   if (desc) lines.push(desc);
-  if (qty.lightFixtures) lines.push("Light fixtures to be disconnected / removed: " + qty.lightFixtures);
-  if (qty.outlets)       lines.push("Outlets / Power points to be isolated: " + qty.outlets);
-  (qty.custom || []).filter(i => i.label && i.qty).forEach(i => lines.push(i.label + ": " + i.qty));
+  // qty is now a per-room object: { "Bedroom 1": { lightFixtures, outlets, custom } }
+  Object.entries(qty || {}).forEach(([room, d]) => {
+    if (!d) return;
+    const parts = [];
+    if (d.lightFixtures) parts.push("Light fixtures: " + d.lightFixtures);
+    if (d.outlets)       parts.push("Outlets / Power points: " + d.outlets);
+    (d.custom || []).filter(i => i.label && i.qty).forEach(i => parts.push(i.label + ": " + i.qty));
+    if (parts.length) lines.push(room + " — " + parts.join(", "));
+  });
   return lines.join("\n\t- ");
 }
 
@@ -716,44 +722,66 @@ function stripAreasToText(areas) {
   return lines.length ? lines.join("\n") : "";
 }
 
-function ElecQty({ qty, setQty }) {
-  const update = (field, val) => setQty(prev => ({ ...prev, [field]: val }));
-  const addCustom = () => setQty(prev => ({ ...prev, custom: [...(prev.custom || []), { label: "", qty: "" }] }));
-  const updateCustom = (i, field, val) => setQty(prev => {
-    const custom = [...(prev.custom || [])];
+function ElecRoomPanel({ room, data, onChange }) {
+  const d = data || { lightFixtures: "", outlets: "", custom: [] };
+  const upd = (field, val) => onChange({ ...d, [field]: val });
+  const addCustom = () => onChange({ ...d, custom: [...(d.custom || []), { label: "", qty: "" }] });
+  const updCustom = (i, field, val) => {
+    const custom = [...(d.custom || [])];
     custom[i] = { ...custom[i], [field]: val };
-    return { ...prev, custom };
-  });
-  const removeCustom = (i) => setQty(prev => {
-    const custom = (prev.custom || []).filter((_, idx) => idx !== i);
-    return { ...prev, custom };
-  });
+    onChange({ ...d, custom });
+  };
+  const remCustom = (i) => onChange({ ...d, custom: (d.custom || []).filter((_, idx) => idx !== i) });
 
-  const numStyle = { width:"100%", background:"#1a1a1a", border:"1px solid "+C.border, borderRadius:8, padding:"8px 12px", fontSize:16, color:"#eee", fontFamily:"inherit" };
-  const inputStyle = { ...numStyle, borderRadius:8 };
+  const numSt = { width:"100%", background:"#111", border:"1px solid "+C.border, borderRadius:8, padding:"8px 10px", fontSize:16, color:"#eee", fontFamily:"inherit" };
+  const inpSt = { ...numSt };
 
   return (
-    <div style={{ marginTop:12, display:"flex", flexDirection:"column", gap:10 }}>
-      <div style={{ display:"flex", gap:10 }}>
+    <div style={{ background:"#111", border:"1px solid "+C.border, borderRadius:12, padding:"12px 14px", marginBottom:10 }}>
+      <div style={{ fontSize:13, fontWeight:700, color:C.green, marginBottom:10 }}>{room}</div>
+      <div style={{ display:"flex", gap:10, marginBottom:10 }}>
         <div style={{ flex:1 }}>
           <span style={{ fontSize:11, color:C.muted, fontWeight:600, display:"block", marginBottom:4 }}>Light fixtures</span>
-          <input type="number" min="0" placeholder="0" value={qty.lightFixtures || ""} onChange={e => update("lightFixtures", e.target.value)} style={numStyle}/>
+          <input type="number" min="0" placeholder="0" value={d.lightFixtures} onChange={e => upd("lightFixtures", e.target.value)} style={numSt}/>
         </div>
         <div style={{ flex:1 }}>
           <span style={{ fontSize:11, color:C.muted, fontWeight:600, display:"block", marginBottom:4 }}>Outlets / Power points</span>
-          <input type="number" min="0" placeholder="0" value={qty.outlets || ""} onChange={e => update("outlets", e.target.value)} style={numStyle}/>
+          <input type="number" min="0" placeholder="0" value={d.outlets} onChange={e => upd("outlets", e.target.value)} style={numSt}/>
         </div>
       </div>
-      {(qty.custom || []).map((item, i) => (
-        <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
-          <input placeholder="Item name…" value={item.label} onChange={e => updateCustom(i, "label", e.target.value)} style={{ ...inputStyle, flex:2 }}/>
-          <input type="number" min="0" placeholder="Qty" value={item.qty} onChange={e => updateCustom(i, "qty", e.target.value)} style={{ ...inputStyle, flex:1 }}/>
-          <button onClick={() => removeCustom(i)} style={{ background:"transparent", border:"none", color:"#555", cursor:"pointer", padding:"4px 6px", fontSize:16 }}>✕</button>
+      {(d.custom || []).map((item, i) => (
+        <div key={i} style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8 }}>
+          <input placeholder="Item name…" value={item.label} onChange={e => updCustom(i, "label", e.target.value)} style={{ ...inpSt, flex:2 }}/>
+          <input type="number" min="0" placeholder="Qty" value={item.qty} onChange={e => updCustom(i, "qty", e.target.value)} style={{ ...inpSt, flex:1 }}/>
+          <button onClick={() => remCustom(i)} style={{ background:"transparent", border:"none", color:"#555", cursor:"pointer", padding:"4px 6px", fontSize:16 }}>✕</button>
         </div>
       ))}
-      <button onClick={addCustom} style={{ alignSelf:"flex-start", background:"transparent", border:"1px dashed "+C.border, borderRadius:8, padding:"6px 14px", fontSize:12, color:C.muted, cursor:"pointer", fontFamily:"inherit" }}>
+      <button onClick={addCustom} style={{ background:"transparent", border:"1px dashed "+C.border, borderRadius:8, padding:"5px 12px", fontSize:11, color:C.muted, cursor:"pointer", fontFamily:"inherit" }}>
         + Add item
       </button>
+    </div>
+  );
+}
+
+function ElecQtyByRoom({ rooms, extra, qty, setQty }) {
+  const allRooms = [...rooms];
+  if (extra && extra.trim()) {
+    extra.split(/[,\n]/).map(r => r.trim()).filter(Boolean).forEach(r => {
+      if (!allRooms.includes(r)) allRooms.push(r);
+    });
+  }
+
+  const updateRoom = (room, data) => setQty(prev => ({ ...prev, [room]: data }));
+
+  if (allRooms.length === 0) {
+    return <span style={{ fontSize:13, color:C.muted }}>Select rooms in Section 1 first.</span>;
+  }
+
+  return (
+    <div style={{ marginTop:12 }}>
+      {allRooms.map(room => (
+        <ElecRoomPanel key={room} room={room} data={qty[room]} onChange={data => updateRoom(room, data)}/>
+      ))}
     </div>
   );
 }
@@ -846,7 +874,7 @@ function MouldForm({ onResult }) {
             <YesNo value={elecActive} onChange={setElecActive}/>
             {elecActive==="yes"&&<div style={{marginTop:10}}>
               <TextField value={electrician} onChange={setElectrician} placeholder="e.g. Isolation of power outlets…" rows={2}/>
-              <ElecQty qty={elecQty} setQty={setElecQty}/>
+              <ElecQtyByRoom rooms={rooms} extra={roomsExtra} qty={elecQty} setQty={setElecQty}/>
             </div>}
           </div>
         </div>
@@ -1244,7 +1272,7 @@ function StripOutForm({ onResult }) {
           <YesNo value={elecActive} onChange={setElecActive}/>
           {elecActive==="yes"&&<div style={{marginTop:10}}>
             <TextField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical outlets below 1200mm…" rows={2}/>
-            <ElecQty qty={elecQty} setQty={setElecQty}/>
+            <ElecQtyByRoom rooms={rooms} extra={roomsExtra} qty={elecQty} setQty={setElecQty}/>
           </div>}
         </div>
         <TradeRow label="Plumber" active={plumbActive} setActive={setPlumbActive} value={plumb} setValue={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…"/>
@@ -1550,7 +1578,7 @@ function FloodForm({ onResult }) {
             <YesNo value={elecActive} onChange={setElecActive}/>
             {elecActive==="yes"&&<div style={{marginTop:8}}>
               <TextField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical below 1200mm…" rows={2}/>
-              <ElecQty qty={elecQty} setQty={setElecQty}/>
+              <ElecQtyByRoom rooms={rooms} extra={roomsExtra} qty={elecQty} setQty={setElecQty}/>
             </div>}
           </div>
         </div>
