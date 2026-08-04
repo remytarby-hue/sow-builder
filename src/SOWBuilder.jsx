@@ -1267,6 +1267,8 @@ function StripOutForm({ onResult }) {
       <YesNo value={otherTrades} onChange={setOtherTrades}/>
       {otherTrades==="yes"&&<div style={{marginTop:16}}>
         <TradeRow label="Builder" active={builderActive} setActive={setBuilderActive} value={builder} setValue={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…"/>
+        <TradeRow label="Plumber" active={plumbActive} setActive={setPlumbActive} value={plumb} setValue={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…"/>
+        <TradeRow label="Other trade" active={otherTradeActive} setActive={setOtherTradeActive} value={otherTrade} setValue={setOtherTrade} placeholder="e.g. Asbestos removalist, structural engineer…"/>
         <div style={{marginBottom:16, paddingBottom:16, borderBottom:"1px solid "+C.border}}>
           <span style={{...lbl, color:C.green, marginBottom:8}}>Electrician</span>
           <YesNo value={elecActive} onChange={setElecActive}/>
@@ -1275,8 +1277,6 @@ function StripOutForm({ onResult }) {
             <ElecQtyByRoom rooms={rooms} extra={roomsExtra} qty={elecQty} setQty={setElecQty}/>
           </div>}
         </div>
-        <TradeRow label="Plumber" active={plumbActive} setActive={setPlumbActive} value={plumb} setValue={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…"/>
-        <TradeRow label="Other trade" active={otherTradeActive} setActive={setOtherTradeActive} value={otherTrade} setValue={setOtherTrade} placeholder="e.g. Asbestos removalist, structural engineer…"/>
       </div>}
     </Sec>
 
