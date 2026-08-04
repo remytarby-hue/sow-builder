@@ -72,11 +72,20 @@ const GENERAL_SCOPE = "\t• Disposal of contaminated or non-restorable material
 const LABOUR_FULL   = "\t• Labour carried out during initial attendance\n\t• Reassessment of affected areas during re-attendance\n\t• Moisture readings and monitoring\n\t• Adjustment, relocation, and removal of equipment\n\t• Final checks and confirmation of completion";
 const LABOUR_SHORT  = "\t• Labour carried out during initial attendance\n\t• Final checks and confirmation of completion";
 
+function elecToText(desc, qty) {
+  const lines = [];
+  if (desc) lines.push(desc);
+  if (qty.lightFixtures) lines.push("Light fixtures to be disconnected / removed: " + qty.lightFixtures);
+  if (qty.outlets)       lines.push("Outlets / Power points to be isolated: " + qty.outlets);
+  (qty.custom || []).filter(i => i.label && i.qty).forEach(i => lines.push(i.label + ": " + i.qty));
+  return lines.join("\n\t- ");
+}
+
 function buildMould(d, works) {
   const tradeLines = [];
-  if (d.builderActive === "yes" && d.builder)       tradeLines.push("Builder:\n\t- " + d.builder);
-  if (d.elecActive === "yes" && d.electrician)      tradeLines.push("Electrician:\n\t- " + d.electrician);
-  if (d.plumbActive === "yes" && d.plumber)         tradeLines.push("Plumber:\n\t- " + d.plumber);
+  if (d.builderActive === "yes" && d.builder)  tradeLines.push("Builder:\n\t- " + d.builder);
+  if (d.elecActive === "yes" && (d.electrician || d.elecQty)) tradeLines.push("Electrician:\n\t- " + elecToText(d.electrician, d.elecQty || {}));
+  if (d.plumbActive === "yes" && d.plumber)    tradeLines.push("Plumber:\n\t- " + d.plumber);
   if (d.otherTradeActive === "yes" && d.otherTrade) tradeLines.push("Other:\n\t- " + d.otherTrade);
   const tradesText = tradeLines.length ? tradeLines.join("\n") : "None";
 
@@ -223,7 +232,7 @@ function buildContentsRelocation(d, works) {
 function buildStripout(d, works) {
   const trades = [];
   if (d.builderActive === "yes" && d.builder) trades.push("Builder:\n\t- " + d.builder);
-  if (d.elecActive === "yes" && d.elec)       trades.push("Electrician:\n\t- " + d.elec);
+  if (d.elecActive === "yes" && (d.elec || d.elecQty)) trades.push("Electrician:\n\t- " + elecToText(d.elec, d.elecQty || {}));
   if (d.plumbActive === "yes" && d.plumb)     trades.push("Plumber:\n\t- " + d.plumb);
   if (d.otherTradeActive === "yes" && d.otherTrade) trades.push("Other:\n\t- " + d.otherTrade);
   if (d.asbestos === "yes") trades.push("Other:\n\t- Asbestos clearance certificate required as there is potential asbestos on-site.");
@@ -316,7 +325,7 @@ function buildFlood(d, works) {
   if (d.phase2 === "yes") {
     const trades = [];
     if (d.builderActive === "yes" && d.builder) trades.push("Builder:\n\t- " + d.builder);
-    if (d.elecActive === "yes" && d.elec)       trades.push("Electrician:\n\t- " + d.elec);
+    if (d.elecActive === "yes" && (d.elec || d.elecQty)) trades.push("Electrician:\n\t- " + elecToText(d.elec, d.elecQty || {}));
     if (d.plumbActive === "yes" && d.plumb)     trades.push("Plumber:\n\t- " + d.plumb);
     if (d.otherTradeActive === "yes" && d.otherTrade) trades.push("Other:\n\t- " + d.otherTrade);
     if (d.asbestos === "yes") trades.push("Other:\n\t- Asbestos clearance certificate required as there is potential asbestos on-site.");
@@ -707,6 +716,48 @@ function stripAreasToText(areas) {
   return lines.length ? lines.join("\n") : "";
 }
 
+function ElecQty({ qty, setQty }) {
+  const update = (field, val) => setQty(prev => ({ ...prev, [field]: val }));
+  const addCustom = () => setQty(prev => ({ ...prev, custom: [...(prev.custom || []), { label: "", qty: "" }] }));
+  const updateCustom = (i, field, val) => setQty(prev => {
+    const custom = [...(prev.custom || [])];
+    custom[i] = { ...custom[i], [field]: val };
+    return { ...prev, custom };
+  });
+  const removeCustom = (i) => setQty(prev => {
+    const custom = (prev.custom || []).filter((_, idx) => idx !== i);
+    return { ...prev, custom };
+  });
+
+  const numStyle = { width:"100%", background:"#1a1a1a", border:"1px solid "+C.border, borderRadius:8, padding:"8px 12px", fontSize:16, color:"#eee", fontFamily:"inherit" };
+  const inputStyle = { ...numStyle, borderRadius:8 };
+
+  return (
+    <div style={{ marginTop:12, display:"flex", flexDirection:"column", gap:10 }}>
+      <div style={{ display:"flex", gap:10 }}>
+        <div style={{ flex:1 }}>
+          <span style={{ fontSize:11, color:C.muted, fontWeight:600, display:"block", marginBottom:4 }}>Light fixtures</span>
+          <input type="number" min="0" placeholder="0" value={qty.lightFixtures || ""} onChange={e => update("lightFixtures", e.target.value)} style={numStyle}/>
+        </div>
+        <div style={{ flex:1 }}>
+          <span style={{ fontSize:11, color:C.muted, fontWeight:600, display:"block", marginBottom:4 }}>Outlets / Power points</span>
+          <input type="number" min="0" placeholder="0" value={qty.outlets || ""} onChange={e => update("outlets", e.target.value)} style={numStyle}/>
+        </div>
+      </div>
+      {(qty.custom || []).map((item, i) => (
+        <div key={i} style={{ display:"flex", gap:8, alignItems:"center" }}>
+          <input placeholder="Item name…" value={item.label} onChange={e => updateCustom(i, "label", e.target.value)} style={{ ...inputStyle, flex:2 }}/>
+          <input type="number" min="0" placeholder="Qty" value={item.qty} onChange={e => updateCustom(i, "qty", e.target.value)} style={{ ...inputStyle, flex:1 }}/>
+          <button onClick={() => removeCustom(i)} style={{ background:"transparent", border:"none", color:"#555", cursor:"pointer", padding:"4px 6px", fontSize:16 }}>✕</button>
+        </div>
+      ))}
+      <button onClick={addCustom} style={{ alignSelf:"flex-start", background:"transparent", border:"1px dashed "+C.border, borderRadius:8, padding:"6px 14px", fontSize:12, color:C.muted, cursor:"pointer", fontFamily:"inherit" }}>
+        + Add item
+      </button>
+    </div>
+  );
+}
+
 function GenBtn({ onClick, loading }) {
   return (
     <button onClick={onClick} disabled={loading} style={{ width:"100%", padding:"16px", borderRadius:12, marginTop:4,
@@ -722,7 +773,7 @@ function MouldForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [otherTrades,setOtherTrades]=useState(null);
   const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
-  const [elecActive,setElecActive]=useState(null); const [electrician,setElectrician]=useState("");
+  const [elecActive,setElecActive]=useState(null); const [electrician,setElectrician]=useState(""); const [elecQty,setElecQty]=useState({});
   const [plumbActive,setPlumbActive]=useState(null); const [plumber,setPlumber]=useState("");
   const [otherTradeActive,setOtherTradeActive]=useState(null); const [otherTrade,setOtherTrade]=useState("");
   const [works,setWorks]=useState("");
@@ -759,7 +810,7 @@ function MouldForm({ onResult }) {
     onResult(buildMould({
       areas, otherTrades,
       builderActive, builder:cleaned.builder,
-      elecActive, electrician:cleaned.electrician,
+      elecActive, electrician:cleaned.electrician, elecQty,
       plumbActive, plumber:cleaned.plumber,
       otherTradeActive, otherTrade:cleaned.otherTrade,
       techs, hours, dryingRequired, equip,
@@ -781,7 +832,6 @@ function MouldForm({ onResult }) {
       {otherTrades==="yes"&&(
         <div style={{marginTop:16}}>
           {[{label:"Builder",active:builderActive,setActive:setBuilderActive,val:builder,setVal:setBuilder,ph:"e.g. Removal of kitchen cabinetry…"},
-            {label:"Electrician",active:elecActive,setActive:setElecActive,val:electrician,setVal:setElectrician,ph:"e.g. Isolation of power outlets…"},
             {label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumber,setVal:setPlumber,ph:"e.g. Identify and rectify source of water ingress…"},
             {label:"Other trade",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist, structural engineer…"},
           ].map(t=>(
@@ -791,6 +841,14 @@ function MouldForm({ onResult }) {
               {t.active==="yes"&&<div style={{marginTop:10}}><TextField value={t.val} onChange={t.setVal} placeholder={t.ph} rows={2}/></div>}
             </div>
           ))}
+          <div style={{marginBottom:14, paddingBottom:14, borderBottom:"1px solid "+C.border}}>
+            <span style={{...lbl,color:C.green,marginBottom:6}}>Electrician</span>
+            <YesNo value={elecActive} onChange={setElecActive}/>
+            {elecActive==="yes"&&<div style={{marginTop:10}}>
+              <TextField value={electrician} onChange={setElectrician} placeholder="e.g. Isolation of power outlets…" rows={2}/>
+              <ElecQty qty={elecQty} setQty={setElecQty}/>
+            </div>}
+          </div>
         </div>
       )}
     </Sec>
@@ -1115,7 +1173,7 @@ function StripOutForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [otherTrades,setOtherTrades]=useState(null);
   const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
-  const [elecActive,setElecActive]=useState(null); const [elec,setElec]=useState("");
+  const [elecActive,setElecActive]=useState(null); const [elec,setElec]=useState(""); const [elecQty,setElecQty]=useState({});
   const [plumbActive,setPlumbActive]=useState(null); const [plumb,setPlumb]=useState("");
   const [otherTradeActive,setOtherTradeActive]=useState(null); const [otherTrade,setOtherTrade]=useState("");
   const [asbestos,setAsbestos]=useState(null);
@@ -1156,7 +1214,7 @@ function StripOutForm({ onResult }) {
       techs, hours, truck, truckDays, equip,
       specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
-      stripAreas,
+      stripAreas, elecQty,
     }, cleaned.works));
     setLoading(false);
   };
@@ -1181,7 +1239,14 @@ function StripOutForm({ onResult }) {
       <YesNo value={otherTrades} onChange={setOtherTrades}/>
       {otherTrades==="yes"&&<div style={{marginTop:16}}>
         <TradeRow label="Builder" active={builderActive} setActive={setBuilderActive} value={builder} setValue={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…"/>
-        <TradeRow label="Electrician" active={elecActive} setActive={setElecActive} value={elec} setValue={setElec} placeholder="e.g. Disconnect and make safe all electrical outlets below 1200mm…"/>
+        <div style={{marginBottom:16, paddingBottom:16, borderBottom:"1px solid "+C.border}}>
+          <span style={{...lbl, color:C.green, marginBottom:8}}>Electrician</span>
+          <YesNo value={elecActive} onChange={setElecActive}/>
+          {elecActive==="yes"&&<div style={{marginTop:10}}>
+            <TextField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical outlets below 1200mm…" rows={2}/>
+            <ElecQty qty={elecQty} setQty={setElecQty}/>
+          </div>}
+        </div>
         <TradeRow label="Plumber" active={plumbActive} setActive={setPlumbActive} value={plumb} setValue={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…"/>
         <TradeRow label="Other trade" active={otherTradeActive} setActive={setOtherTradeActive} value={otherTrade} setValue={setOtherTrade} placeholder="e.g. Asbestos removalist, structural engineer…"/>
       </div>}
@@ -1364,7 +1429,7 @@ function FloodForm({ onResult }) {
   const [w2,setW2]=useState(""); const [techs2,setTechs2]=useState(3); const [hours2,setHours2]=useState(20);
   const [equip2,setEquip2]=useState({scrubber:{qty:4,days:2},hepa:{qty:1,days:1}});
   const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
-  const [elecActive,setElecActive]=useState(null); const [elec,setElec]=useState("");
+  const [elecActive,setElecActive]=useState(null); const [elec,setElec]=useState(""); const [elecQty,setElecQty]=useState({});
   const [plumbActive,setPlumbActive]=useState(null); const [plumb,setPlumb]=useState("");
   const [otherTradeActive,setOtherTradeActive]=useState(null); const [otherTrade,setOtherTrade]=useState("");
   const [asbestos,setAsbestos]=useState(null);
@@ -1418,7 +1483,7 @@ function FloodForm({ onResult }) {
       techs3, hours3, equip3,
       techs4, hours4, drying4, equip4,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
-      stripAreas,
+      stripAreas, elecQty,
     }, {w1:cleaned.w1, w2:cleaned.w2, w3:cleaned.w3, w4:cleaned.w4}));
     setLoading(false);
   };
@@ -1471,7 +1536,6 @@ function FloodForm({ onResult }) {
         <span style={lbl}>Other Trades Required?</span>
         <div style={{marginBottom:14}}>
           {[{label:"Builder",active:builderActive,setActive:setBuilderActive,val:builder,setVal:setBuilder,ph:"e.g. Remove all fixed cabinetry below 1200mm…"},
-            {label:"Electrician",active:elecActive,setActive:setElecActive,val:elec,setVal:setElec,ph:"e.g. Disconnect and make safe all electrical below 1200mm…"},
             {label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumb,setVal:setPlumb,ph:"e.g. Isolate and disconnect all plumbing below 1200mm…"},
             {label:"Other",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist…"},
           ].map(t=>(
@@ -1481,6 +1545,14 @@ function FloodForm({ onResult }) {
               {t.active==="yes"&&<div style={{marginTop:8}}><TextField value={t.val} onChange={t.setVal} placeholder={t.ph} rows={2}/></div>}
             </div>
           ))}
+          <div style={{marginBottom:12, paddingBottom:12, borderBottom:"1px solid "+C.border}}>
+            <span style={{...lbl,color:C.green,marginBottom:6}}>Electrician</span>
+            <YesNo value={elecActive} onChange={setElecActive}/>
+            {elecActive==="yes"&&<div style={{marginTop:8}}>
+              <TextField value={elec} onChange={setElec} placeholder="e.g. Disconnect and make safe all electrical below 1200mm…" rows={2}/>
+              <ElecQty qty={elecQty} setQty={setElecQty}/>
+            </div>}
+          </div>
         </div>
         <div style={{marginBottom:12}}><span style={lbl}>Asbestos clearance required?</span><YesNo value={asbestos} onChange={setAsbestos}/></div>
         <div style={{marginBottom:14}}>
