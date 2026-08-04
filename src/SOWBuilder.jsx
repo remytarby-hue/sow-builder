@@ -860,8 +860,6 @@ function MouldForm({ onResult }) {
       {otherTrades==="yes"&&(
         <div style={{marginTop:16}}>
           {[{label:"Builder",active:builderActive,setActive:setBuilderActive,val:builder,setVal:setBuilder,ph:"e.g. Removal of kitchen cabinetry…"},
-            {label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumber,setVal:setPlumber,ph:"e.g. Identify and rectify source of water ingress…"},
-            {label:"Other trade",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist, structural engineer…"},
           ].map(t=>(
             <div key={t.label} style={{marginBottom:14, paddingBottom:14, borderBottom:"1px solid "+C.border}}>
               <span style={{...lbl,color:C.green,marginBottom:6}}>{t.label}</span>
@@ -877,6 +875,15 @@ function MouldForm({ onResult }) {
               <ElecQtyByRoom rooms={rooms} extra={roomsExtra} qty={elecQty} setQty={setElecQty}/>
             </div>}
           </div>
+          {[{label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumber,setVal:setPlumber,ph:"e.g. Identify and rectify source of water ingress…"},
+            {label:"Other trade",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist, structural engineer…"},
+          ].map(t=>(
+            <div key={t.label} style={{marginBottom:14, paddingBottom:14, borderBottom:"1px solid "+C.border}}>
+              <span style={{...lbl,color:C.green,marginBottom:6}}>{t.label}</span>
+              <YesNo value={t.active} onChange={t.setActive}/>
+              {t.active==="yes"&&<div style={{marginTop:10}}><TextField value={t.val} onChange={t.setVal} placeholder={t.ph} rows={2}/></div>}
+            </div>
+          ))}
         </div>
       )}
     </Sec>
@@ -1267,8 +1274,6 @@ function StripOutForm({ onResult }) {
       <YesNo value={otherTrades} onChange={setOtherTrades}/>
       {otherTrades==="yes"&&<div style={{marginTop:16}}>
         <TradeRow label="Builder" active={builderActive} setActive={setBuilderActive} value={builder} setValue={setBuilder} placeholder="e.g. Remove all fixed cabinetry below 1200mm…"/>
-        <TradeRow label="Plumber" active={plumbActive} setActive={setPlumbActive} value={plumb} setValue={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…"/>
-        <TradeRow label="Other trade" active={otherTradeActive} setActive={setOtherTradeActive} value={otherTrade} setValue={setOtherTrade} placeholder="e.g. Asbestos removalist, structural engineer…"/>
         <div style={{marginBottom:16, paddingBottom:16, borderBottom:"1px solid "+C.border}}>
           <span style={{...lbl, color:C.green, marginBottom:8}}>Electrician</span>
           <YesNo value={elecActive} onChange={setElecActive}/>
@@ -1277,6 +1282,8 @@ function StripOutForm({ onResult }) {
             <ElecQtyByRoom rooms={rooms} extra={roomsExtra} qty={elecQty} setQty={setElecQty}/>
           </div>}
         </div>
+        <TradeRow label="Plumber" active={plumbActive} setActive={setPlumbActive} value={plumb} setValue={setPlumb} placeholder="e.g. Isolate, disconnect and make safe all plumbing below 1200mm…"/>
+        <TradeRow label="Other trade" active={otherTradeActive} setActive={setOtherTradeActive} value={otherTrade} setValue={setOtherTrade} placeholder="e.g. Asbestos removalist, structural engineer…"/>
       </div>}
     </Sec>
 
@@ -1564,8 +1571,6 @@ function FloodForm({ onResult }) {
         <span style={lbl}>Other Trades Required?</span>
         <div style={{marginBottom:14}}>
           {[{label:"Builder",active:builderActive,setActive:setBuilderActive,val:builder,setVal:setBuilder,ph:"e.g. Remove all fixed cabinetry below 1200mm…"},
-            {label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumb,setVal:setPlumb,ph:"e.g. Isolate and disconnect all plumbing below 1200mm…"},
-            {label:"Other",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist…"},
           ].map(t=>(
             <div key={t.label} style={{marginBottom:12, paddingBottom:12, borderBottom:"1px solid "+C.border}}>
               <span style={{...lbl,color:C.green,marginBottom:6}}>{t.label}</span>
@@ -1581,6 +1586,15 @@ function FloodForm({ onResult }) {
               <ElecQtyByRoom rooms={rooms} extra={roomsExtra} qty={elecQty} setQty={setElecQty}/>
             </div>}
           </div>
+          {[{label:"Plumber",active:plumbActive,setActive:setPlumbActive,val:plumb,setVal:setPlumb,ph:"e.g. Isolate and disconnect all plumbing below 1200mm…"},
+            {label:"Other",active:otherTradeActive,setActive:setOtherTradeActive,val:otherTrade,setVal:setOtherTrade,ph:"e.g. Asbestos removalist…"},
+          ].map(t=>(
+            <div key={t.label} style={{marginBottom:12, paddingBottom:12, borderBottom:"1px solid "+C.border}}>
+              <span style={{...lbl,color:C.green,marginBottom:6}}>{t.label}</span>
+              <YesNo value={t.active} onChange={t.setActive}/>
+              {t.active==="yes"&&<div style={{marginTop:8}}><TextField value={t.val} onChange={t.setVal} placeholder={t.ph} rows={2}/></div>}
+            </div>
+          ))}
         </div>
         <div style={{marginBottom:12}}><span style={lbl}>Asbestos clearance required?</span><YesNo value={asbestos} onChange={setAsbestos}/></div>
         <div style={{marginBottom:14}}>
