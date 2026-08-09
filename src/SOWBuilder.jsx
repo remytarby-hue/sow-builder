@@ -36,7 +36,7 @@ const SOW_TYPES = [
 ];
 
 const WORKS_TEMPLATES = {
-  mould:            "Erection of containment to contain the work zone.\nEstablish negative air pressure using air filtration devices (AFDs).\nRemoval of the affected section of the [wall/ceiling].\nHEPA vac + sanitation of all affected surfaces.\nInstallation of drying equipment.\nEncapsulation of the affected building material as required.",
+  mould:            "Establish containment in isolated affected areas.\nInstall Air filtration device(s) and establish negative air pressure\nRemoval of the affected: Wall linings, ceiling linings, floor coverings\nHEPA Vacuum, application of antimicrobial treatment and abrasive cleaning of all affected surfaces\nInstallation of drying equipment.\nEncapsulation of the affected building material as required.",
   contents:         "Assessment and inventory of the affected items.\nRemoval of affected items for disposal.\nPacking and relocation of restorable/non-affected items.\nHEPA vac + sanitation of restorable items.\nReinstatement of contents.",
   contents_relocation: "Packing and relocation of contents.\nReinstatement of contents.",
   stripout:         "Strip out of walls in the affected areas up to 1200mm.\nRemoval of all affected insulation.\nRemoval of all nails, fixings, adhesives and residues.\nDisposal of all stripped materials.",
