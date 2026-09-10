@@ -52,6 +52,8 @@ const WORKS_TEMPLATES = {
 // ── DOCUMENT ASSEMBLY ─────────────────────────────────────────────────────────
 function tobullets(text) {
   if (!text) return "";
+  // If text already contains tab-bullet formatting (room-by-room mode), pass through
+  if (text.includes("\t•")) return text;
   return text.split("\n").filter(s => s.trim()).map(s => "\t• " + s.trim()).join("\n");
 }
 
@@ -526,6 +528,66 @@ function TextField({ value, onChange, placeholder, rows = 3, templateKey }) {
   );
 }
 
+
+// ── getRoomList: shared helper ────────────────────────────────────────────────
+function getRoomList(rooms, extra) {
+  const all = [...(rooms || [])];
+  if (extra && extra.trim()) {
+    extra.split(/[,\n]/).map(r => r.trim()).filter(Boolean).forEach(r => {
+      if (!all.includes(r)) all.push(r);
+    });
+  }
+  return all;
+}
+
+// ── WorksField: Works Required section with General / Room by Room toggle ─────
+function WorksField({ value, onChange, templateKey, rows = 4, placeholder, allRooms, mode, onModeChange, roomWorks, onRoomWorksChange }) {
+  const tmpl = templateKey ? WORKS_TEMPLATES[templateKey] : null;
+  const taStyle = { width:"100%", boxSizing:"border-box", padding:"11px 14px", borderRadius:10, border:"1.5px solid "+C.border, background:C.white, color:C.text, fontSize:14, fontFamily:"inherit", resize:"vertical", lineHeight:1.6, outline:"none" };
+  const hasRooms = allRooms && allRooms.length > 0;
+  return (
+    <div>
+      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
+        {[["general","General"],["room","Room by Room"]].map(([m,label]) => (
+          <button key={m} onClick={() => onModeChange(m)}
+            style={{ padding:"6px 14px", borderRadius:99, border:"1.5px solid "+(mode===m ? C.green : C.border),
+              background: mode===m ? C.green : "transparent", color: mode===m ? "#fff" : C.muted,
+              fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === "general" ? (
+        <div>
+          {tmpl && (
+            <button onClick={() => onChange(tmpl)} style={{ marginBottom:10, padding:"10px 18px", borderRadius:9, background:C.green, border:"none", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:8, boxShadow:"0 2px 8px rgba(90,154,58,0.25)" }}>
+              <span style={{fontSize:16}}>📋</span> Use Standard Template
+            </button>
+          )}
+          <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows} style={taStyle} />
+        </div>
+      ) : !hasRooms ? (
+        <span style={{ fontSize:13, color:C.muted }}>Select rooms in Section 1 first.</span>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+          {allRooms.map(room => (
+            <div key={room} style={{ background:"#111", border:"1px solid "+C.border, borderRadius:12, padding:"12px 14px" }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.green, marginBottom:8 }}>{room}</div>
+              <textarea
+                value={(roomWorks[room] || "")}
+                onChange={e => onRoomWorksChange(prev => ({ ...prev, [room]: e.target.value }))}
+                placeholder={"Works for " + room + "…"}
+                rows={3}
+                style={taStyle}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Stepper({ value, onChange, min = 0, max = 99 }) {
   return (
     <div style={{ display:"inline-flex", alignItems:"center", background:C.white, borderRadius:8, border:"1.5px solid "+C.border, overflow:"hidden" }}>
@@ -805,6 +867,7 @@ function MouldForm({ onResult }) {
   const [plumbActive,setPlumbActive]=useState(null); const [plumber,setPlumber]=useState("");
   const [otherTradeActive,setOtherTradeActive]=useState(null); const [otherTrade,setOtherTrade]=useState("");
   const [works,setWorks]=useState("");
+  const [worksMode,setWorksMode]=useState("general"); const [roomWorks,setRoomWorks]=useState({});
   const [techs,setTechs]=useState(2);
   const [hours,setHours]=useState(10);
   const [dryingRequired,setDryingRequired]=useState(null);
@@ -830,11 +893,21 @@ function MouldForm({ onResult }) {
       electrician: { text: electrician, mode: "trades"    },
       plumber:     { text: plumber,     mode: "trades"    },
       otherTrade:  { text: otherTrade,  mode: "trades"    },
-      works:       { text: works || WORKS_TEMPLATES.mould, mode: "bullets" },
+      ...(worksMode === "room"
+        ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>roomWorks[r]?.trim()).map((r,i)=>["__rw_"+i,{text:roomWorks[r],mode:"bullets"}]))
+        : { works: { text: works || WORKS_TEMPLATES.mould, mode: "bullets" } }),
       consDetail:  { text: consDetail,  mode: "translate"    },
       addReqs:     { text: addReqs,     mode: "translate"    },
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
+    const _allRooms_m = getRoomList(rooms, roomsExtra);
+    const finalWorks_m = worksMode === "room"
+      ? _allRooms_m.filter(r=>roomWorks[r]?.trim()).map((r,i)=>{
+          const t=cleaned["__rw_"+i]||"";
+          const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");
+          return r+":\n"+b;
+        }).join("\n\n")
+      : cleaned.works;
     onResult(buildMould({
       areas, otherTrades,
       builderActive, builder:cleaned.builder,
@@ -845,7 +918,7 @@ function MouldForm({ onResult }) {
       specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
       stripReq, stripAreas,
-    }, cleaned.works));
+    }, finalWorks_m));
     setLoading(false);
   };
 
@@ -889,7 +962,8 @@ function MouldForm({ onResult }) {
     </Sec>
 
     <Sec number={3} title="Works Required">
-      <TextField value={works} onChange={setWorks} placeholder="Describe what needs to be done…" rows={5} templateKey="mould"/>
+      <WorksField value={works} onChange={setWorks} placeholder="Describe what needs to be done…" rows={5} templateKey="mould"
+        allRooms={getRoomList(rooms,roomsExtra)} mode={worksMode} onModeChange={setWorksMode} roomWorks={roomWorks} onRoomWorksChange={setRoomWorks}/>
     </Sec>
 
     <Sec number={4} title="Strip-Out Required?">
@@ -950,6 +1024,7 @@ function MouldForm({ onResult }) {
 // ── CONTENTS FORM ─────────────────────────────────────────────────────────────
 function ContentsForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState(""); const [works,setWorks]=useState("");
+  const [worksMode,setWorksMode]=useState("general"); const [roomWorks,setRoomWorks]=useState({});
   const [phases,setPhases]=useState({
     initial:    {active:null, techs:3, hours:20},
     packing:    {active:null, techs:3, hours:8},
@@ -993,13 +1068,23 @@ function ContentsForm({ onResult }) {
       };
     });
     const cleaned = await cleanAll({
-      works:       { text: works || WORKS_TEMPLATES.contents, mode: "bullets" },
+      ...(worksMode === "room"
+        ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>roomWorks[r]?.trim()).map((r,i)=>["__rw_"+i,{text:roomWorks[r],mode:"bullets"}]))
+        : { works: { text: works || WORKS_TEMPLATES.contents, mode: "bullets" } }),
       onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
       storageSize: { text: storageSize, mode: "translate" },
       consDetail:  { text: consDetail,  mode: "translate" },
       addReqs:     { text: addReqs,     mode: "translate" },
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
+    const _allRooms_c = getRoomList(rooms, roomsExtra);
+    const finalWorks_c = worksMode === "room"
+      ? _allRooms_c.filter(r=>roomWorks[r]?.trim()).map((r,i)=>{
+          const t=cleaned["__rw_"+i]||"";
+          const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");
+          return r+":\n"+b;
+        }).join("\n\n")
+      : cleaned.works;
     onResult(buildContents({
       areas, phases:phasesForBuild, equip,
       onsite, onsiteRoom:cleaned.onsiteRoom,
@@ -1007,7 +1092,7 @@ function ContentsForm({ onResult }) {
       truck, truckDays,
       specCons, consDetail:cleaned.consDetail, boxes,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
-    }, cleaned.works));
+    }, finalWorks_c));
     setLoading(false);
   };
 
@@ -1017,7 +1102,8 @@ function ContentsForm({ onResult }) {
     </Sec>
 
     <Sec number={2} title="Works Required">
-      <TextField value={works} onChange={setWorks} placeholder="Describe contents works…" rows={4} templateKey="contents"/>
+      <WorksField value={works} onChange={setWorks} placeholder="Describe contents works…" rows={4} templateKey="contents"
+        allRooms={getRoomList(rooms,roomsExtra)} mode={worksMode} onModeChange={setWorksMode} roomWorks={roomWorks} onRoomWorksChange={setRoomWorks}/>
     </Sec>
 
     <Sec number={3} title="Labour by Phase">
@@ -1093,6 +1179,7 @@ function ContentsForm({ onResult }) {
 function ContentsRelocationForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [works,setWorks]=useState("");
+  const [worksMode,setWorksMode]=useState("general"); const [roomWorks,setRoomWorks]=useState({});
   const [techsInitial,setTechsInitial]=useState(3); const [hoursInitial,setHoursInitial]=useState(20);
   const [techsReinstate,setTechsReinstate]=useState(3); const [hoursReinstate,setHoursReinstate]=useState(8);
   const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
@@ -1108,13 +1195,23 @@ function ContentsRelocationForm({ onResult }) {
     setLoading(true);
     const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      works:       { text: works || WORKS_TEMPLATES.contents_relocation, mode: "bullets" },
+      ...(worksMode === "room"
+        ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>roomWorks[r]?.trim()).map((r,i)=>["__rw_"+i,{text:roomWorks[r],mode:"bullets"}]))
+        : { works: { text: works || WORKS_TEMPLATES.contents_relocation, mode: "bullets" } }),
       onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
       storageSize: { text: storageSize, mode: "translate" },
       addReqs:     { text: addReqs,     mode: "translate" },
       consDetail:  { text: consDetail,  mode: "translate" },
       siteNotes:   { text: siteNotes,   mode: "sitenotes" },
     });
+    const _allRooms_cr = getRoomList(rooms, roomsExtra);
+    const finalWorks_cr = worksMode === "room"
+      ? _allRooms_cr.filter(r=>roomWorks[r]?.trim()).map((r,i)=>{
+          const t=cleaned["__rw_"+i]||"";
+          const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");
+          return r+":\n"+b;
+        }).join("\n\n")
+      : cleaned.works;
     onResult(buildContentsRelocation({
       areas, techsInitial, hoursInitial, techsReinstate, hoursReinstate,
       onsite, onsiteRoom:cleaned.onsiteRoom,
@@ -1132,7 +1229,8 @@ function ContentsRelocationForm({ onResult }) {
     </Sec>
 
     <Sec number={2} title="Works Required">
-      <TextField value={works} onChange={setWorks} placeholder="Describe what needs to be relocated and how…" rows={3} templateKey="contents_relocation"/>
+      <WorksField value={works} onChange={setWorks} placeholder="Describe what needs to be relocated and how…" rows={3} templateKey="contents_relocation"
+        allRooms={getRoomList(rooms,roomsExtra)} mode={worksMode} onModeChange={setWorksMode} roomWorks={roomWorks} onRoomWorksChange={setRoomWorks}/>
     </Sec>
 
     <Sec number={3} title="Labour">
@@ -1214,6 +1312,7 @@ function StripOutForm({ onResult }) {
   const [asbestos,setAsbestos]=useState(null);
   const [skipBin,setSkipBin]=useState(null); const [skipDetail,setSkipDetail]=useState("");
   const [works,setWorks]=useState("");
+  const [worksMode,setWorksMode]=useState("general"); const [roomWorks,setRoomWorks]=useState({});
   const [techs,setTechs]=useState(2); const [hours,setHours]=useState(20);
   const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
   const [equip,setEquip]=useState({scrubber:{qty:2,days:1},poles:{qty:4,days:1}});
@@ -1234,11 +1333,21 @@ function StripOutForm({ onResult }) {
       plumb:      { text: plumb,      mode: "trades"    },
       otherTrade: { text: otherTrade, mode: "trades"    },
       skipDetail: { text: skipDetail, mode: "translate" },
-      works:      { text: works || WORKS_TEMPLATES.stripout, mode: "bullets" },
+      ...(worksMode === "room"
+        ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>roomWorks[r]?.trim()).map((r,i)=>["__rw_"+i,{text:roomWorks[r],mode:"bullets"}]))
+        : { works: { text: works || WORKS_TEMPLATES.stripout, mode: "bullets" } }),
       addReqs:    { text: addReqs,    mode: "translate" },
       consDetail: { text: consDetail, mode: "translate" },
       siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
+    const _allRooms_so = getRoomList(rooms, roomsExtra);
+    const finalWorks_so = worksMode === "room"
+      ? _allRooms_so.filter(r=>roomWorks[r]?.trim()).map((r,i)=>{
+          const t=cleaned["__rw_"+i]||"";
+          const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");
+          return r+":\n"+b;
+        }).join("\n\n")
+      : cleaned.works;
     onResult(buildStripout({
       areas,
       builderActive, builder:cleaned.builder,
@@ -1300,7 +1409,8 @@ function StripOutForm({ onResult }) {
     </Sec>
 
     <Sec number={5} title="Works Required">
-      <TextField value={works} onChange={setWorks} placeholder="Describe strip out works…" rows={4} templateKey="stripout"/>
+      <WorksField value={works} onChange={setWorks} placeholder="Describe strip out works…" rows={4} templateKey="stripout"
+        allRooms={getRoomList(rooms,roomsExtra)} mode={worksMode} onModeChange={setWorksMode} roomWorks={roomWorks} onRoomWorksChange={setRoomWorks}/>
     </Sec>
 
     <Sec number={6} title="Strip-Out Areas">
@@ -1352,6 +1462,7 @@ function StripOutForm({ onResult }) {
 function FlooringForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState("");
   const [works,setWorks]=useState("");
+  const [worksMode,setWorksMode]=useState("general"); const [roomWorks,setRoomWorks]=useState({});
   const [techs,setTechs]=useState(2); const [hours,setHours]=useState(20);
   const [dryingRequired,setDryingRequired]=useState(null);
   const [equip,setEquip]=useState({dehum:{qty:5,days:5},mover:{qty:8,days:5},hepa:{qty:1,days:1},scrubber:{qty:0,days:1}});
@@ -1370,17 +1481,27 @@ function FlooringForm({ onResult }) {
     setLoading(true);
     const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      works:      { text: works || WORKS_TEMPLATES.flooring, mode: "bullets" },
+      ...(worksMode === "room"
+        ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>roomWorks[r]?.trim()).map((r,i)=>["__rw_"+i,{text:roomWorks[r],mode:"bullets"}]))
+        : { works: { text: works || WORKS_TEMPLATES.flooring, mode: "bullets" } }),
       consDetail: { text: consDetail, mode: "translate"  },
       addReqs:    { text: addReqs,    mode: "translate"  },
       siteNotes:  { text: siteNotes,  mode: "sitenotes"  },
     });
+    const _allRooms_fl = getRoomList(rooms, roomsExtra);
+    const finalWorks_fl = worksMode === "room"
+      ? _allRooms_fl.filter(r=>roomWorks[r]?.trim()).map((r,i)=>{
+          const t=cleaned["__rw_"+i]||"";
+          const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");
+          return r+":\n"+b;
+        }).join("\n\n")
+      : cleaned.works;
     onResult(buildFlooring({
       areas, techs, hours,
       dryingRequired, equip, truck, truckDays,
       highCost, specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
-    }, cleaned.works));
+    }, finalWorks_fl));
     setLoading(false);
   };
 
@@ -1390,7 +1511,8 @@ function FlooringForm({ onResult }) {
     </Sec>
 
     <Sec number={2} title="Works Required">
-      <TextField value={works} onChange={setWorks} placeholder="Describe flooring works…" rows={4} templateKey="flooring"/>
+      <WorksField value={works} onChange={setWorks} placeholder="Describe flooring works…" rows={4} templateKey="flooring"
+        allRooms={getRoomList(rooms,roomsExtra)} mode={worksMode} onModeChange={setWorksMode} roomWorks={roomWorks} onRoomWorksChange={setRoomWorks}/>
     </Sec>
 
     <Sec number={3} title="Labour">
@@ -1455,13 +1577,15 @@ function FloodForm({ onResult }) {
   const [phase2,setPhase2]=useState(null);
   const [phase3,setPhase3]=useState(null);
 
-  const [w1,setW1]=useState(""); const [techs1,setTechs1]=useState(3); const [hours1,setHours1]=useState(12);
+  const [w1,setW1]=useState(""); const [w1Mode,setW1Mode]=useState("general"); const [rw1,setRw1]=useState({});
+  const [techs1,setTechs1]=useState(3); const [hours1,setHours1]=useState(12);
   const [equip1,setEquip1]=useState({trolley:{qty:1,days:1},straps:{qty:1,days:1}});
   const [onsite,setOnsite]=useState(null); const [onsiteRoom,setOnsiteRoom]=useState("");
   const [offsite,setOffsite]=useState(null); const [storageSize,setStorageSize]=useState("");
   const [truck1,setTruck1]=useState(null); const [truckDays1,setTruckDays1]=useState(1);
 
-  const [w2,setW2]=useState(""); const [techs2,setTechs2]=useState(3); const [hours2,setHours2]=useState(20);
+  const [w2,setW2]=useState(""); const [w2Mode,setW2Mode]=useState("general"); const [rw2,setRw2]=useState({});
+  const [techs2,setTechs2]=useState(3); const [hours2,setHours2]=useState(20);
   const [equip2,setEquip2]=useState({scrubber:{qty:4,days:2},hepa:{qty:1,days:1}});
   const [builderActive,setBuilderActive]=useState(null); const [builder,setBuilder]=useState("");
   const [elecActive,setElecActive]=useState(null); const [elec,setElec]=useState(""); const [elecQty,setElecQty]=useState({});
@@ -1471,10 +1595,12 @@ function FloodForm({ onResult }) {
   const [skipBin,setSkipBin]=useState(null); const [skipDetail,setSkipDetail]=useState("");
   const [truck2,setTruck2]=useState(null);
 
-  const [w3,setW3]=useState(""); const [techs3,setTechs3]=useState(2); const [hours3,setHours3]=useState(4);
+  const [w3,setW3]=useState(""); const [w3Mode,setW3Mode]=useState("general"); const [rw3,setRw3]=useState({});
+  const [techs3,setTechs3]=useState(2); const [hours3,setHours3]=useState(4);
   const [equip3,setEquip3]=useState({scrubber:{qty:4,days:1}});
 
-  const [w4,setW4]=useState(""); const [techs4,setTechs4]=useState(2); const [hours4,setHours4]=useState(15);
+  const [w4,setW4]=useState(""); const [w4Mode,setW4Mode]=useState("general"); const [rw4,setRw4]=useState({});
+  const [techs4,setTechs4]=useState(2); const [hours4,setHours4]=useState(15);
   const [drying4,setDrying4]=useState(null);
   const [equip4,setEquip4]=useState({dehum:{qty:3,days:5},mover:{qty:6,days:5},scrubber:{qty:3,days:1},hepa:{qty:2,days:1}});
 
@@ -1500,13 +1626,21 @@ function FloodForm({ onResult }) {
       skipDetail:  { text: skipDetail,  mode: "translate" },
       onsiteRoom:  { text: onsiteRoom,  mode: "translate" },
       storageSize: { text: storageSize, mode: "translate" },
-      w1: { text: w1 || WORKS_TEMPLATES.flood_contents,    mode: "bullets" },
-      w2: { text: w2 || WORKS_TEMPLATES.flood_stripout,    mode: "bullets" },
-      w3: { text: w3 || WORKS_TEMPLATES.flood_siteprep,    mode: "bullets" },
-      w4: { text: w4 || WORKS_TEMPLATES.flood_restoration, mode: "bullets" },
+      ...(w1Mode==="room" ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>rw1[r]?.trim()).map((r,i)=>["__rw1_"+i,{text:rw1[r],mode:"bullets"}])) : {w1:{text:w1||WORKS_TEMPLATES.flood_contents,mode:"bullets"}}),
+      ...(w2Mode==="room" ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>rw2[r]?.trim()).map((r,i)=>["__rw2_"+i,{text:rw2[r],mode:"bullets"}])) : {w2:{text:w2||WORKS_TEMPLATES.flood_stripout,mode:"bullets"}}),
+      ...(w3Mode==="room" ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>rw3[r]?.trim()).map((r,i)=>["__rw3_"+i,{text:rw3[r],mode:"bullets"}])) : {w3:{text:w3||WORKS_TEMPLATES.flood_siteprep,mode:"bullets"}}),
+      ...(w4Mode==="room" ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>rw4[r]?.trim()).map((r,i)=>["__rw4_"+i,{text:rw4[r],mode:"bullets"}])) : {w4:{text:w4||WORKS_TEMPLATES.flood_restoration,mode:"bullets"}}),
       addReqs:    { text: addReqs,    mode: "translate"  },
       siteNotes:  { text: siteNotes,  mode: "sitenotes"  },
     });
+    const _aR = getRoomList(rooms, roomsExtra);
+    const _mkFW = (mode, rw, pfx, fallback) => mode==="room"
+      ? _aR.filter(r=>rw[r]?.trim()).map((r,i)=>{const t=cleaned[pfx+i]||"";const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");return r+":\n"+b;}).join("\n\n")
+      : cleaned[pfx.replace(/_$/,"")];
+    const fw1 = _mkFW(w1Mode,rw1,"__rw1_","w1");
+    const fw2 = _mkFW(w2Mode,rw2,"__rw2_","w2");
+    const fw3 = _mkFW(w3Mode,rw3,"__rw3_","w3");
+    const fw4 = _mkFW(w4Mode,rw4,"__rw4_","w4");
     onResult(buildFlood({
       areas, phase1, phase2, phase3,
       techs1, hours1, equip1, onsite, onsiteRoom:cleaned.onsiteRoom,
@@ -1519,7 +1653,7 @@ function FloodForm({ onResult }) {
       techs4, hours4, drying4, equip4,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
       stripAreas, elecQty,
-    }, {w1:cleaned.w1, w2:cleaned.w2, w3:cleaned.w3, w4:cleaned.w4}));
+    }, {w1:fw1, w2:fw2, w3:fw3, w4:fw4}));
     setLoading(false);
   };
 
@@ -1540,7 +1674,8 @@ function FloodForm({ onResult }) {
       {phaseHeader(1, "Contents Remediation", phase1, setPhase1)}
       {phase1==="yes"&&<div style={{padding:"16px"}}>
         <span style={lbl}>Works Required</span>
-        <TextField value={w1} onChange={setW1} placeholder="Describe contents remediation works…" rows={3} templateKey="flood_contents"/>
+        <WorksField value={w1} onChange={setW1} placeholder="Describe contents remediation works…" rows={3} templateKey="flood_contents"
+          allRooms={getRoomList(rooms,roomsExtra)} mode={w1Mode} onModeChange={setW1Mode} roomWorks={rw1} onRoomWorksChange={setRw1}/>
         <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
           <div><span style={lbl}>Technicians</span><Stepper value={techs1} onChange={setTechs1} min={1}/></div>
           <div><span style={lbl}>Hours</span><Stepper value={hours1} onChange={setHours1} min={1} max={200}/></div>
@@ -1603,7 +1738,8 @@ function FloodForm({ onResult }) {
           {skipBin==="yes"&&<div style={{marginTop:8}}><TextField value={skipDetail} onChange={setSkipDetail} placeholder="e.g. Medium skip bin…" rows={2}/></div>}
         </div>
         <span style={lbl}>Works Required</span>
-        <TextField value={w2} onChange={setW2} placeholder="Describe strip out works…" rows={3} templateKey="flood_stripout"/>
+        <WorksField value={w2} onChange={setW2} placeholder="Describe strip out works…" rows={3} templateKey="flood_stripout"
+          allRooms={getRoomList(rooms,roomsExtra)} mode={w2Mode} onModeChange={setW2Mode} roomWorks={rw2} onRoomWorksChange={setRw2}/>
         <div style={{marginTop:14}}>
           <span style={{...lbl,marginBottom:10}}>Strip-out areas — enter approximate surface per room</span>
           <StripAreasPicker rooms={rooms} extra={roomsExtra} areas={stripAreas} setAreas={setStripAreas}/>
@@ -1622,7 +1758,8 @@ function FloodForm({ onResult }) {
       {phaseHeader(3, "Site Preparation", phase3, setPhase3)}
       {phase3==="yes"&&<div style={{padding:"16px"}}>
         <span style={lbl}>Works Required</span>
-        <TextField value={w3} onChange={setW3} placeholder="Describe site preparation works…" rows={3} templateKey="flood_siteprep"/>
+        <WorksField value={w3} onChange={setW3} placeholder="Describe site preparation works…" rows={3} templateKey="flood_siteprep"
+          allRooms={getRoomList(rooms,roomsExtra)} mode={w3Mode} onModeChange={setW3Mode} roomWorks={rw3} onRoomWorksChange={setRw3}/>
         <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
           <div><span style={lbl}>Technicians</span><Stepper value={techs3} onChange={setTechs3} min={1}/></div>
           <div><span style={lbl}>Hours</span><Stepper value={hours3} onChange={setHours3} min={1} max={200}/></div>
@@ -1638,7 +1775,8 @@ function FloodForm({ onResult }) {
       </div>
       <div style={{padding:"16px"}}>
         <span style={lbl}>Works Required</span>
-        <TextField value={w4} onChange={setW4} placeholder="Describe restoration cleaning works…" rows={4} templateKey="flood_restoration"/>
+        <WorksField value={w4} onChange={setW4} placeholder="Describe restoration cleaning works…" rows={4} templateKey="flood_restoration"
+          allRooms={getRoomList(rooms,roomsExtra)} mode={w4Mode} onModeChange={setW4Mode} roomWorks={rw4} onRoomWorksChange={setRw4}/>
         <div style={{display:"flex",gap:20,flexWrap:"wrap",marginTop:14}}>
           <div><span style={lbl}>Technicians</span><Stepper value={techs4} onChange={setTechs4} min={1}/></div>
           <div><span style={lbl}>Hours</span><Stepper value={hours4} onChange={setHours4} min={1} max={200}/></div>
@@ -1672,6 +1810,7 @@ function FloodForm({ onResult }) {
 // ── RESTORATION FORM ──────────────────────────────────────────────────────────
 function RestorationForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState(""); const [works,setWorks]=useState("");
+  const [worksMode,setWorksMode]=useState("general"); const [roomWorks,setRoomWorks]=useState({});
   const [techs,setTechs]=useState(2); const [hours,setHours]=useState(5);
   const [equip,setEquip]=useState({scrubber:{qty:2,days:1},hepa:{qty:1,days:1},fogging:{qty:0,days:1}});
   const [truck,setTruck]=useState(null); const [truckDays,setTruckDays]=useState(1);
@@ -1686,11 +1825,21 @@ function RestorationForm({ onResult }) {
     setLoading(true);
     const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      works:      { text: works || WORKS_TEMPLATES.restoration, mode: "bullets" },
+      ...(worksMode === "room"
+        ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>roomWorks[r]?.trim()).map((r,i)=>["__rw_"+i,{text:roomWorks[r],mode:"bullets"}]))
+        : { works: { text: works || WORKS_TEMPLATES.restoration, mode: "bullets" } }),
       consDetail: { text: consDetail, mode: "translate" },
       addReqs:    { text: addReqs,    mode: "translate" },
       siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
+    const _allRooms_r = getRoomList(rooms, roomsExtra);
+    const finalWorks_r = worksMode === "room"
+      ? _allRooms_r.filter(r=>roomWorks[r]?.trim()).map((r,i)=>{
+          const t=cleaned["__rw_"+i]||"";
+          const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");
+          return r+":\n"+b;
+        }).join("\n\n")
+      : cleaned.works;
     onResult(buildRestoration({
       areas, techs, hours, equip,
       truck, truckDays, specCons, consDetail:cleaned.consDetail,
@@ -1701,7 +1850,10 @@ function RestorationForm({ onResult }) {
 
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected"><RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/></Sec>
-    <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe restoration cleaning works…" rows={4} templateKey="restoration"/></Sec>
+    <Sec number={2} title="Works Required">
+      <WorksField value={works} onChange={setWorks} placeholder="Describe restoration cleaning works…" rows={4} templateKey="restoration"
+        allRooms={getRoomList(rooms,roomsExtra)} mode={worksMode} onModeChange={setWorksMode} roomWorks={roomWorks} onRoomWorksChange={setRoomWorks}/>
+    </Sec>
     <Sec number={3} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
@@ -1735,6 +1887,7 @@ function RestorationForm({ onResult }) {
 // ── DRYING FORM ───────────────────────────────────────────────────────────────
 function DryingForm({ onResult }) {
   const [rooms,setRooms]=useState([]); const [roomsExtra,setRoomsExtra]=useState(""); const [works,setWorks]=useState("");
+  const [worksMode,setWorksMode]=useState("general"); const [roomWorks,setRoomWorks]=useState({});
   const [techs,setTechs]=useState(1); const [hours,setHours]=useState(5);
   const [equip,setEquip]=useState({dehum:{qty:1,days:5},mover:{qty:3,days:5}});
   const [specCons,setSpecCons]=useState(null); const [consDetail,setConsDetail]=useState("");
@@ -1748,22 +1901,35 @@ function DryingForm({ onResult }) {
     setLoading(true);
     const areas = roomsToText(rooms, roomsExtra);
     const cleaned = await cleanAll({
-      works:      { text: works || WORKS_TEMPLATES.drying, mode: "bullets" },
+      ...(worksMode === "room"
+        ? Object.fromEntries(getRoomList(rooms,roomsExtra).filter(r=>roomWorks[r]?.trim()).map((r,i)=>["__rw_"+i,{text:roomWorks[r],mode:"bullets"}]))
+        : { works: { text: works || WORKS_TEMPLATES.drying, mode: "bullets" } }),
       consDetail: { text: consDetail, mode: "translate" },
       addReqs:    { text: addReqs,    mode: "translate" },
       siteNotes:  { text: siteNotes,  mode: "sitenotes" },
     });
+    const _allRooms_d = getRoomList(rooms, roomsExtra);
+    const finalWorks_d = worksMode === "room"
+      ? _allRooms_d.filter(r=>roomWorks[r]?.trim()).map((r,i)=>{
+          const t=cleaned["__rw_"+i]||"";
+          const b=t.split("\n").filter(l=>l.trim()).map(l=>"\t• "+l.trim()).join("\n");
+          return r+":\n"+b;
+        }).join("\n\n")
+      : cleaned.works;
     onResult(buildDrying({
       areas, techs, hours, equip,
       specCons, consDetail:cleaned.consDetail,
       addReqs:cleaned.addReqs, siteNotes:cleaned.siteNotes,
-    }, cleaned.works));
+    }, finalWorks_d));
     setLoading(false);
   };
 
   return (<div>
     <Sec number={1} title="Areas / Rooms Affected"><RoomPicker selected={rooms} setSelected={setRooms} extra={roomsExtra} setExtra={setRoomsExtra}/></Sec>
-    <Sec number={2} title="Works Required"><TextField value={works} onChange={setWorks} placeholder="Describe drying works…" rows={3} templateKey="drying"/></Sec>
+    <Sec number={2} title="Works Required">
+      <WorksField value={works} onChange={setWorks} placeholder="Describe drying works…" rows={3} templateKey="drying"
+        allRooms={getRoomList(rooms,roomsExtra)} mode={worksMode} onModeChange={setWorksMode} roomWorks={roomWorks} onRoomWorksChange={setRoomWorks}/>
+    </Sec>
     <Sec number={3} title="Labour">
       <div style={{display:"flex",gap:24,flexWrap:"wrap"}}>
         <div><span style={lbl}>Technicians</span><Stepper value={techs} onChange={setTechs} min={1}/></div>
