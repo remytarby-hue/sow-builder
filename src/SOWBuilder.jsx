@@ -513,6 +513,46 @@ async function cleanAll(fields) {
 
 
 // ── UI COMPONENTS ─────────────────────────────────────────────────────────────
+const ADD_REQS_CHIPS = [
+  "Skip bin required",
+  "Off-site storage required",
+  "Truck required",
+];
+
+function AddReqsField({ value, onChange }) {
+  const toggle = (chip) => {
+    const lines = value ? value.split("\n").map(l => l.trim()).filter(Boolean) : [];
+    const idx = lines.indexOf(chip);
+    let next;
+    if (idx >= 0) { lines.splice(idx, 1); next = lines.join("\n"); }
+    else { next = [...lines, chip].join("\n"); }
+    onChange(next);
+  };
+  const active = value ? value.split("\n").map(l => l.trim()).filter(Boolean) : [];
+  return (
+    <div>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+        {ADD_REQS_CHIPS.map(chip => {
+          const on = active.includes(chip);
+          return (
+            <button key={chip} onClick={() => toggle(chip)}
+              style={{ padding:"7px 13px", borderRadius:99, border:"1.5px solid "+(on ? C.green : C.border),
+                background: on ? C.greenLight : "transparent", color: on ? C.green : C.muted,
+                fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
+                display:"flex", alignItems:"center", gap:6, transition:"all 0.12s" }}>
+              {on && <span style={{fontSize:11}}>✓</span>}
+              {chip}
+            </button>
+          );
+        })}
+      </div>
+      <textarea value={value} onChange={e => onChange(e.target.value)}
+        placeholder="Anything else needed for this job…" rows={2}
+        style={{ width:"100%", boxSizing:"border-box", padding:"11px 14px", borderRadius:10, border:"1.5px solid "+C.border, background:C.white, color:C.text, fontSize:14, fontFamily:"inherit", resize:"vertical", lineHeight:1.6, outline:"none" }} />
+    </div>
+  );
+}
+
 const SITE_NOTE_CHIPS = [
   "High ceilings — large ladder required",
   "Access via elevator only",
@@ -1066,10 +1106,7 @@ function MouldForm({ onResult }) {
     </Sec>
 
     <Sec number={8} title="Additional Requirements">
-      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
-      <div style={{display:"flex",flexWrap:"wrap",gap:5,marginTop:8}}>
-        {["Skip bin","Off-site storage","Truck"].map(ex=><span key={ex} style={{fontSize:11,color:C.muted,background:C.subtle,border:"1px dashed "+C.border,borderRadius:5,padding:"3px 9px"}}>e.g. {ex}</span>)}
-      </div>
+      <AddReqsField value={addReqs} onChange={setAddReqs}/>
     </Sec>
 
     <Sec number={9} title="Site Notes — Anything that could help attending technicians">
@@ -1223,7 +1260,7 @@ function ContentsForm({ onResult }) {
     </Sec>
 
     <Sec number={8} title="Additional Requirements">
-      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
+      <AddReqsField value={addReqs} onChange={setAddReqs}/>
     </Sec>
 
     <Sec number={9} title="Site Notes — Anything that could help attending technicians">
@@ -1349,7 +1386,7 @@ function ContentsRelocationForm({ onResult }) {
     </Sec>
 
     <Sec number={8} title="Additional Requirements">
-      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed for this job…" rows={2}/>
+      <AddReqsField value={addReqs} onChange={setAddReqs}/>
     </Sec>
 
     <Sec number={9} title="Site Notes — Anything that could help attending technicians">
@@ -1506,7 +1543,7 @@ function StripOutForm({ onResult }) {
     </Sec>
 
     <Sec number={11} title="Additional Requirements">
-      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
+      <AddReqsField value={addReqs} onChange={setAddReqs}/>
     </Sec>
 
     <Sec number={12} title="Site Notes — Anything that could help attending technicians">
@@ -1618,7 +1655,7 @@ function FlooringForm({ onResult }) {
     </Sec>
 
     <Sec number={7} title="Additional Requirements">
-      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
+      <AddReqsField value={addReqs} onChange={setAddReqs}/>
     </Sec>
 
     <Sec number={8} title="Site Notes — Anything that could help attending technicians">
@@ -1855,7 +1892,7 @@ function FloodForm({ onResult }) {
     </div>
 
     <Sec number={5} title="Additional Requirements">
-      <TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/>
+      <AddReqsField value={addReqs} onChange={setAddReqs}/>
     </Sec>
 
     <Sec number={6} title="Site Notes — Anything that could help attending technicians">
@@ -1935,7 +1972,7 @@ function RestorationForm({ onResult }) {
       <YesNo value={specCons} onChange={setSpecCons}/>
       {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra Odorx, specialised cleaning products…" rows={2}/></div>}
     </Sec>
-    <Sec number={7} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={7} title="Additional Requirements"><AddReqsField value={addReqs} onChange={setAddReqs}/></Sec>
     <Sec number={8} title="Site Notes — Anything that could help attending technicians">
       <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
@@ -2004,7 +2041,7 @@ function DryingForm({ onResult }) {
       <YesNo value={specCons} onChange={setSpecCons}/>
       {specCons==="yes"&&<div style={{marginTop:10}}><TextField value={consDetail} onChange={setConsDetail} placeholder="e.g. extra filters, floor protection…" rows={2}/></div>}
     </Sec>
-    <Sec number={6} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
+    <Sec number={6} title="Additional Requirements"><AddReqsField value={addReqs} onChange={setAddReqs}/></Sec>
     <Sec number={7} title="Site Notes — Anything that could help attending technicians">
       <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
