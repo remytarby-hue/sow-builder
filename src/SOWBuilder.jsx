@@ -547,15 +547,19 @@ function WorksField({ value, onChange, templateKey, rows = 4, placeholder, allRo
   const hasRooms = allRooms && allRooms.length > 0;
   return (
     <div>
-      <div style={{ display:"flex", gap:8, marginBottom:12 }}>
-        {[["general","General"],["room","Room by Room"]].map(([m,label]) => (
-          <button key={m} onClick={() => onModeChange(m)}
-            style={{ padding:"6px 14px", borderRadius:99, border:"1.5px solid "+(mode===m ? C.green : C.border),
-              background: mode===m ? C.green : "transparent", color: mode===m ? "#fff" : C.muted,
-              fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-            {label}
-          </button>
-        ))}
+      <div style={{ marginBottom:10 }}>
+        <span style={{ fontSize:12, color:C.muted, fontWeight:600 }}>How would you like to enter the works?</span>
+        <div style={{ display:"flex", gap:8, marginTop:8 }}>
+          {[["general","General","One block for all areas"],["room","Room by Room","One section per room"]].map(([m,label,desc]) => (
+            <button key={m} onClick={() => onModeChange(m)}
+              style={{ flex:1, padding:"8px 12px", borderRadius:10, border:"1.5px solid "+(mode===m ? C.green : C.border),
+                background: mode===m ? C.greenLight : "transparent", color: mode===m ? C.green : C.muted,
+                fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", textAlign:"left", lineHeight:1.4 }}>
+              <div style={{ color: mode===m ? "#fff" : C.muted }}>{label}</div>
+              <div style={{ fontSize:10, fontWeight:500, color: mode===m ? "rgba(255,255,255,0.65)" : "#555", marginTop:2 }}>{desc}</div>
+            </button>
+          ))}
+        </div>
       </div>
       {mode === "general" ? (
         <div>
