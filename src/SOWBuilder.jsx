@@ -513,6 +513,53 @@ async function cleanAll(fields) {
 
 
 // ── UI COMPONENTS ─────────────────────────────────────────────────────────────
+const SITE_NOTE_CHIPS = [
+  "High ceilings — large ladder required",
+  "Access via elevator only",
+  "Street parking only",
+  "Underground parking — boom gate access",
+  "Hand trolley required",
+  "Property is vacant / unoccupied",
+];
+
+function SiteNotesField({ value, onChange }) {
+  const toggle = (chip) => {
+    const lines = value ? value.split("\n").map(l => l.trim()).filter(Boolean) : [];
+    const idx = lines.indexOf(chip);
+    let next;
+    if (idx >= 0) {
+      lines.splice(idx, 1);
+      next = lines.join("\n");
+    } else {
+      next = [...lines, chip].join("\n");
+    }
+    onChange(next);
+  };
+  const active = value ? value.split("\n").map(l => l.trim()).filter(Boolean) : [];
+  return (
+    <div>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+        {SITE_NOTE_CHIPS.map(chip => {
+          const on = active.includes(chip);
+          return (
+            <button key={chip} onClick={() => toggle(chip)}
+              style={{ padding:"7px 13px", borderRadius:99, border:"1.5px solid "+(on ? C.green : C.border),
+                background: on ? C.greenLight : "transparent", color: on ? C.green : C.muted,
+                fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit",
+                display:"flex", alignItems:"center", gap:6, transition:"all 0.12s" }}>
+              {on && <span style={{fontSize:11}}>✓</span>}
+              {chip}
+            </button>
+          );
+        })}
+      </div>
+      <textarea value={value} onChange={e => onChange(e.target.value)}
+        placeholder="Add any other site notes…" rows={3}
+        style={{ width:"100%", boxSizing:"border-box", padding:"11px 14px", borderRadius:10, border:"1.5px solid "+C.border, background:C.white, color:C.text, fontSize:14, fontFamily:"inherit", resize:"vertical", lineHeight:1.6, outline:"none" }} />
+    </div>
+  );
+}
+
 function TextField({ value, onChange, placeholder, rows = 3, templateKey }) {
   const tmpl = templateKey ? WORKS_TEMPLATES[templateKey] : null;
   return (
@@ -1026,7 +1073,7 @@ function MouldForm({ onResult }) {
     </Sec>
 
     <Sec number={9} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling — large ladder required, access via elevator, trolley needed, park on street only…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
 
     <GenBtn onClick={go} loading={loading}/>
@@ -1180,7 +1227,7 @@ function ContentsForm({ onResult }) {
     </Sec>
 
     <Sec number={9} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. elevator access, fragile items, no parking on street…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
 
     <GenBtn onClick={go} loading={loading}/>
@@ -1306,7 +1353,7 @@ function ContentsRelocationForm({ onResult }) {
     </Sec>
 
     <Sec number={9} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. elevator access required, high-rise building, fragile items, no parking on street…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
 
     <GenBtn onClick={go} loading={loading}/>
@@ -1463,7 +1510,7 @@ function StripOutForm({ onResult }) {
     </Sec>
 
     <Sec number={12} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling, elevator access, no parking on street…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
 
     <GenBtn onClick={go} loading={loading}/>
@@ -1575,7 +1622,7 @@ function FlooringForm({ onResult }) {
     </Sec>
 
     <Sec number={8} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling, heavy furniture, elevator access…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
 
     <GenBtn onClick={go} loading={loading}/>
@@ -1812,7 +1859,7 @@ function FloodForm({ onResult }) {
     </Sec>
 
     <Sec number={6} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. high ceiling, elevator access, no parking on street…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
 
     <GenBtn onClick={go} loading={loading}/>
@@ -1890,7 +1937,7 @@ function RestorationForm({ onResult }) {
     </Sec>
     <Sec number={7} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <Sec number={8} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. strong odour on site, high ceiling, elevator access…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
@@ -1959,7 +2006,7 @@ function DryingForm({ onResult }) {
     </Sec>
     <Sec number={6} title="Additional Requirements"><TextField value={addReqs} onChange={setAddReqs} placeholder="Anything else needed…" rows={2}/></Sec>
     <Sec number={7} title="Site Notes — Anything that could help attending technicians">
-      <TextField value={siteNotes} onChange={setSiteNotes} placeholder="e.g. equipment access, power availability, key location…" rows={3}/>
+      <SiteNotesField value={siteNotes} onChange={setSiteNotes}/>
     </Sec>
     <GenBtn onClick={go} loading={loading}/>
   </div>);
