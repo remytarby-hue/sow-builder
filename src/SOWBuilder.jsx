@@ -572,7 +572,15 @@ function WorksField({ value, onChange, templateKey, rows = 4, placeholder, allRo
         <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
           {allRooms.map(room => (
             <div key={room} style={{ background:"#111", border:"1px solid "+C.border, borderRadius:12, padding:"12px 14px" }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C.green, marginBottom:8 }}>{room}</div>
+              <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+                <div style={{ fontSize:13, fontWeight:700, color:C.green }}>{room}</div>
+                {tmpl && (
+                  <button onClick={() => onRoomWorksChange(prev => ({ ...prev, [room]: tmpl }))}
+                    style={{ padding:"5px 11px", borderRadius:8, background:C.green, border:"none", color:"#fff", fontSize:11, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:5 }}>
+                    <span>📋</span> Use Template
+                  </button>
+                )}
+              </div>
               <textarea
                 value={(roomWorks[room] || "")}
                 onChange={e => onRoomWorksChange(prev => ({ ...prev, [room]: e.target.value }))}
