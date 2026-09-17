@@ -92,17 +92,6 @@ const CATEGORIES = [
       "Applied antimicrobial solution to affected surfaces.",
       "Applied antimicrobial solution with abrasive cleaning where required.",
       "Installed mechanical drying equipment to assist with returning moisture levels to dry standard.",
-      { section: "Mould Remediation Follow-up" },
-      "Re-assessed affected areas for further microbial growth",
-      "Completed final HEPA vacuuming and sanitisation of the work area.",
-      "Removed the Air Filtration Device upon completion of works.",
-      "Inspected and confirmed the correct operation of all mechanical drying equipment.",
-      "Collected moisture readings from affected areas.",
-      "Removed mechanical drying equipment following confirmation of dry moisture readings.",
-      "Encapsulated affected timber framing and the back of plasterboard where required.",
-      "Removed containment following successful completion of remediation works.",
-      "Completed final walkthrough of the remediated area and confirmed works were complete.",
-      "Installed mechanical drying equipment where elevated moisture was present.",
     ]
   },
   {
